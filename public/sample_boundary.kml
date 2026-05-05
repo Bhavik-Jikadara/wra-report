@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <name>Sample Project Boundary</name>
+    <description>A sample polygon for testing the Wind Farm Micrositing Tool</description>
+    <Placemark>
+      <name>Test Site 1</name>
+      <Polygon>
+        <outerBoundaryIs>
+          <LinearRing>
+            <coordinates>
+              74.5000,15.5000,0
+              74.5500,15.5000,0
+              74.5500,15.5500,0
+              74.5000,15.5500,0
+              74.5000,15.5000,0
+            </coordinates>
+          </LinearRing>
+        </outerBoundaryIs>
+      </Polygon>
+    </Placemark>
+  </Document>
+</kml>
