@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { cn } from '@/lib/utils';
 
 export function CompliancePanel() {
-  const { turbines, micrositingSettings, projectBoundary } = useProjectStore();
+  const { turbines, micrositingSettings, projectBoundary, externalTurbines } = useProjectStore();
   const [isExpanded, setIsExpanded] = useState(false);
 
   if (!projectBoundary || turbines.length === 0) return null;
@@ -34,15 +34,17 @@ export function CompliancePanel() {
       critical: true
     },
     {
-      label: 'External project spacing — data not provided',
-      passed: false,
+      label: externalTurbines.length > 0 
+        ? `External project spacing (${externalTurbines.length} WTGs checked)`
+        : 'External project spacing — data not provided',
+      passed: externalTurbines.length > 0,
       critical: false,
-      isWarning: true
+      isWarning: externalTurbines.length === 0
     }
   ];
 
   const passedCount = checks.filter(c => c.passed).length;
-  const totalChecks = checks.length - 1; // excluding 'not provided'
+  const totalChecks = checks.length; 
 
   return (
     <div className="absolute bottom-4 right-4 z-10 w-[calc(100vw-32px)] sm:w-80 bg-card rounded-md shadow-lg border overflow-hidden flex flex-col max-h-[calc(100vh-100px)]">

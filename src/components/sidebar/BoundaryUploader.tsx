@@ -4,6 +4,7 @@ import { useProjectStore } from '@/store/useProjectStore';
 import { parseKmlOrKmz } from '@/lib/kmlParser';
 import { toast } from 'sonner';
 import { area, centroid } from '@turf/turf';
+import { identifyFeaturesFromOSM } from '@/lib/osmService';
 
 export function BoundaryUploader() {
   const [isDragging, setIsDragging] = useState(false);
@@ -34,6 +35,28 @@ export function BoundaryUploader() {
         setProjectBoundary(featureCollection);
         setFileName(file.name);
         toast.success('Boundary uploaded successfully');
+
+        // Automatically identify features
+        const featureToast = toast.loading('Identifying water bodies and dwellings...');
+        try {
+          const { waterbodies, dwellings } = await identifyFeaturesFromOSM(featureCollection);
+          const { setMapFeatures, mapFeatures } = useProjectStore.getState();
+          
+          const newFeatures = [
+            ...(mapFeatures?.features || []),
+            ...waterbodies.features,
+            ...dwellings.features
+          ];
+
+          setMapFeatures({
+            type: 'FeatureCollection',
+            features: newFeatures as any
+          });
+
+          toast.success(`Identified ${waterbodies.features.length} water bodies and ${dwellings.features.length} dwelling zones`, { id: featureToast });
+        } catch (e) {
+          toast.error('Failed to auto-identify features', { id: featureToast });
+        }
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Error processing file');

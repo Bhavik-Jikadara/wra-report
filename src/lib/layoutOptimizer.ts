@@ -7,6 +7,8 @@ import { calculateSpacing } from './spacingValidator';
 export async function optimizeLayout(
   boundary: FeatureCollection,
   exclusionZones: FeatureCollection | null,
+  externalTurbines: TurbinePosition[],
+  mapFeatures: FeatureCollection | null,
   settings: MicrositingSettings,
   turbineModel: TurbineModel
 ): Promise<{ turbines: TurbinePosition[], warnings: string[] }> {
@@ -71,38 +73,54 @@ export async function optimizeLayout(
     rowIndex++;
   }
 
-  // Rotate grid to align with prevailing wind direction
-  // Wind comes FROM settings.prevailingWindDir. 
-  // We rotate the entire grid so that rows are perpendicular to wind.
   const rotatedCandidates = candidates.map(pt => 
     transformRotate(pt, settings.prevailingWindDir, { pivot: centerPt })
   );
+
+  // 2.5 Prepare Exclusion Zones (Regular + Feature Setbacks)
+  const allExclusions: Feature<Polygon | MultiPolygon>[] = [];
+  if (exclusionZones) {
+    allExclusions.push(...exclusionZones.features.filter(f => f.geometry.type === 'Polygon' || f.geometry.type === 'MultiPolygon') as any);
+  }
+  
+  if (mapFeatures) {
+    for (const feature of mapFeatures.features) {
+      if (feature.geometry.type === 'Polygon' || feature.geometry.type === 'MultiPolygon') {
+        const type = feature.properties?.type || 'other';
+        let featureSetback = 50; 
+        if (type === 'dwelling') featureSetback = 500; 
+        if (type === 'water') featureSetback = 100;
+        
+        try {
+          const buffered = buffer(feature as any, featureSetback, { units: 'meters' });
+          if (buffered) allExclusions.push(buffered as any);
+        } catch (e) {
+          console.error('Error buffering feature:', e);
+          allExclusions.push(feature as any);
+        }
+      }
+    }
+  }
 
   // 3. Filter valid candidates (inside boundary and NOT in exclusion zones)
   let validCandidates = rotatedCandidates.filter(pt => {
     const inBoundary = booleanPointInPolygon(pt, placementPolygon as Feature<Polygon | MultiPolygon>);
     if (!inBoundary) return false;
 
-    // Check exclusion zones
-    if (exclusionZones && exclusionZones.features.length > 0) {
-      for (const zone of exclusionZones.features) {
-        if (zone.geometry.type === 'Polygon' || zone.geometry.type === 'MultiPolygon') {
-          if (booleanPointInPolygon(pt, zone as Feature<Polygon | MultiPolygon>)) {
-            return false;
-          }
-        }
+    // Check all exclusion zones
+    for (const zone of allExclusions) {
+      if (booleanPointInPolygon(pt, zone)) {
+        return false;
       }
     }
 
     return true;
   });
 
-  // Sort candidates to fill from center outward (or some other heuristic)
-  validCandidates.sort((a, b) => {
-    const distA = distance(a, centerPt);
-    const distB = distance(b, centerPt);
-    return distA - distB;
-  });
+  // Sort candidates to fill uniformly (Shuffle for distributed filling)
+  // or just leave them in grid order for a clean fill.
+  // The user wants to fill the ENTIRE boundary, so we should avoid clustering at the center.
+  validCandidates = validCandidates.sort(() => Math.random() - 0.5);
 
   // 4. Greedy Placement with Elliptical Spacing Check
   const placedTurbines: TurbinePosition[] = [];
@@ -132,6 +150,26 @@ export async function optimizeLayout(
       if (distM < r_required) {
         isValid = false;
         break;
+      }
+    }
+
+    // Check against external turbines
+    if (isValid) {
+      for (const ext of externalTurbines) {
+        const pPt = point([ext.lng, ext.lat]);
+        const distM = distance(candidate, pPt, { units: 'kilometers' }) * 1000;
+        
+        let b = bearing(candidate, pPt);
+        if (b < 0) b += 360;
+        const angleDiff = (b - settings.prevailingWindDir) * (Math.PI / 180);
+
+        const r_required = (majorAxis * minorAxis) / 
+          Math.sqrt(Math.pow(minorAxis * Math.cos(angleDiff), 2) + Math.pow(majorAxis * Math.sin(angleDiff), 2));
+
+        if (distM < r_required) {
+          isValid = false;
+          break;
+        }
       }
     }
     

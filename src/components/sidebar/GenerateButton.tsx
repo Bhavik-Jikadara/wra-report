@@ -33,10 +33,17 @@ export function GenerateButton() {
       toast.loading('Building spacing grid...', { id: loadingToast });
       
       await new Promise(resolve => setTimeout(resolve, 500));
-      toast.loading('Applying exclusion zones...', { id: loadingToast });
+      toast.loading('Applying exclusion zones & features...', { id: loadingToast });
 
-      const { exclusionZones } = useProjectStore.getState();
-      const { turbines, warnings } = await optimizeLayout(projectBoundary, exclusionZones, micrositingSettings, model);
+      const { exclusionZones, externalTurbines, mapFeatures } = useProjectStore.getState();
+      const { turbines, warnings } = await optimizeLayout(
+        projectBoundary, 
+        exclusionZones, 
+        externalTurbines,
+        mapFeatures,
+        micrositingSettings, 
+        model
+      );
       
       setTurbines(turbines);
 

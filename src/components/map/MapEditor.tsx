@@ -17,7 +17,7 @@ export function MapEditor() {
   const [zoom] = useState(4);
   const [mapLoaded, setMapLoaded] = useState(false);
 
-  const { projectBoundary, turbines, exclusionZones } = useProjectStore();
+  const { projectBoundary, turbines, exclusionZones, externalTurbines, mapFeatures } = useProjectStore();
 
   // MapboxDraw instance
   const drawRef = useRef<any>(null);
@@ -307,6 +307,49 @@ export function MapEditor() {
     }
   }, [turbines, mapLoaded]);
 
+  // Effect to handle External Turbines Rendering
+  useEffect(() => {
+    if (!map.current || !mapLoaded) return;
+    const m = map.current;
+
+    const sourceId = 'external-turbines-source';
+    const layerIdPoints = 'external-turbines-points';
+
+    const externalGeoJson: GeoJSON.FeatureCollection = {
+      type: 'FeatureCollection',
+      features: externalTurbines.map(t => ({
+        type: 'Feature',
+        properties: { id: t.id },
+        geometry: {
+          type: 'Point',
+          coordinates: [t.lng, t.lat]
+        }
+      }))
+    };
+
+    if (!m.getSource(sourceId)) {
+      m.addSource(sourceId, {
+        type: 'geojson',
+        data: externalGeoJson
+      });
+
+      m.addLayer({
+        id: layerIdPoints,
+        type: 'circle',
+        source: sourceId,
+        paint: {
+          'circle-radius': 5,
+          'circle-color': '#64748b', // Slate 500 for external
+          'circle-stroke-width': 1,
+          'circle-stroke-color': '#ffffff',
+          'circle-opacity': 0.7
+        }
+      });
+    } else {
+      (m.getSource(sourceId) as maplibregl.GeoJSONSource).setData(externalGeoJson);
+    }
+  }, [externalTurbines, mapLoaded]);
+
   const handleSetMode = (mode: string) => {
     if (drawRef.current) {
       if (mode === 'draw_circle') {
@@ -345,6 +388,18 @@ export function MapEditor() {
     });
     handleClearDrawing();
     import('sonner').then(m => m.toast.success('Exclusion zone added'));
+  };
+
+  const handleSetFeature = (feature: any, type: string) => {
+    const { mapFeatures, setMapFeatures } = useProjectStore.getState();
+    const currentFeatures = mapFeatures ? [...mapFeatures.features] : [];
+    
+    setMapFeatures({
+      type: 'FeatureCollection',
+      features: [...currentFeatures, { ...feature, properties: { ...feature.properties, type } }]
+    });
+    handleClearDrawing();
+    import('sonner').then(m => m.toast.success(`${type.charAt(0).toUpperCase() + type.slice(1)} feature added`));
   };
 
   // Effect to handle Exclusion Zones Rendering
@@ -393,6 +448,63 @@ export function MapEditor() {
     }
   }, [exclusionZones, mapLoaded]);
 
+  // Effect to handle Map Features Rendering
+  useEffect(() => {
+    if (!map.current || !mapLoaded) return;
+    const m = map.current;
+
+    const sourceId = 'map-features-source';
+    const layerIdFill = 'map-features-fill';
+    const layerIdLine = 'map-features-line';
+
+    if (mapFeatures) {
+      if (!m.getSource(sourceId)) {
+        m.addSource(sourceId, {
+          type: 'geojson',
+          data: mapFeatures
+        });
+
+        m.addLayer({
+          id: layerIdFill,
+          type: 'fill',
+          source: sourceId,
+          paint: {
+            'fill-color': [
+              'match',
+              ['get', 'type'],
+              'water', '#3b82f6', // Blue
+              'dwelling', '#ef4444', // Red
+              /* default */ '#8b5cf6' // Violet
+            ],
+            'fill-opacity': 0.2
+          }
+        });
+
+        m.addLayer({
+          id: layerIdLine,
+          type: 'line',
+          source: sourceId,
+          paint: {
+            'line-color': [
+              'match',
+              ['get', 'type'],
+              'water', '#3b82f6',
+              'dwelling', '#ef4444',
+              /* default */ '#8b5cf6'
+            ],
+            'line-width': 1.5
+          }
+        });
+      } else {
+        (m.getSource(sourceId) as maplibregl.GeoJSONSource).setData(mapFeatures);
+      }
+    } else {
+      if (m.getSource(sourceId)) {
+        (m.getSource(sourceId) as maplibregl.GeoJSONSource).setData({ type: 'FeatureCollection', features: [] });
+      }
+    }
+  }, [mapFeatures, mapLoaded]);
+
   return (
     <div className="absolute inset-0 w-full h-full bg-slate-900">
       <div ref={mapContainer} className="w-full h-full" />
@@ -406,6 +518,7 @@ export function MapEditor() {
           onClear={handleClearDrawing} 
           onSetBoundary={() => handleSetBoundary(selectedFeature)}
           onSetExclusion={() => handleSetExclusion(selectedFeature)}
+          onSetFeature={(type) => handleSetFeature(selectedFeature, type)}
         />
       )}
       <CompliancePanel />
@@ -417,12 +530,14 @@ function MeasurementPanelWrapper({
   feature, 
   onClear,
   onSetBoundary,
-  onSetExclusion
+  onSetExclusion,
+  onSetFeature
 }: { 
   feature: any, 
   onClear: () => void,
   onSetBoundary: () => void,
-  onSetExclusion: () => void
+  onSetExclusion: () => void,
+  onSetFeature: (type: string) => void
 }) {
   const { perimeterMeters, areaSqMeters, radiusMeters } = calculateFeatureMeasurements(feature);
   
@@ -435,6 +550,7 @@ function MeasurementPanelWrapper({
       onClear={onClear}
       onSetBoundary={onSetBoundary}
       onSetExclusion={onSetExclusion}
+      onSetFeature={onSetFeature}
     />
   );
 }

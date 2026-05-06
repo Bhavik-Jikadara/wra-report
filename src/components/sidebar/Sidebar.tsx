@@ -4,6 +4,7 @@ import { BoundaryUploader } from './BoundaryUploader';
 import { TurbineConfigPanel } from './TurbineConfigPanel';
 import { GenerateButton } from './GenerateButton';
 import { EYASettingsPanel } from './EYASettingsPanel';
+import { ExternalDataPanel } from './ExternalDataPanel';
 import { X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -67,6 +68,7 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
         <ScrollArea className="flex-1">
           <div className="p-4 space-y-6">
             <BoundaryUploader />
+            <ExternalDataPanel />
             <TurbineConfigPanel />
             <EYASettingsPanel />
           </div>

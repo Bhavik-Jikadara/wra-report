@@ -13,10 +13,15 @@ export interface ProjectState {
   micrositingSettings: MicrositingSettings;
   customPowerCurves: Record<string, [number, number][]>;
 
+  externalTurbines: TurbinePosition[];
+  mapFeatures: FeatureCollection | null;
+
   setProjectId: (id: string) => void;
   setProjectName: (name: string) => void;
-  setProjectBoundary: (boundary: FeatureCollection) => void;
+  setProjectBoundary: (boundary: FeatureCollection | null) => void;
   setExclusionZones: (zones: FeatureCollection | null) => void;
+  setExternalTurbines: (turbines: TurbinePosition[]) => void;
+  setMapFeatures: (features: FeatureCollection | null) => void;
   setTurbines: (turbines: TurbinePosition[]) => void;
   updateTurbine: (id: string, data: Partial<TurbinePosition>) => void;
   setEYASettings: (settings: Partial<EYASettings>) => void;
@@ -58,6 +63,8 @@ const initialState = {
   projectBoundary: null,
   exclusionZones: null,
   turbines: [],
+  externalTurbines: [],
+  mapFeatures: null,
   eyaSettings: defaultEYASettings,
   micrositingSettings: defaultMicrositingSettings,
   customPowerCurves: {},
@@ -71,6 +78,8 @@ export const useProjectStore = create<ProjectState>()(
       setProjectName: (name) => set({ projectName: name }),
       setProjectBoundary: (boundary) => set({ projectBoundary: boundary }),
       setExclusionZones: (zones) => set({ exclusionZones: zones }),
+      setExternalTurbines: (turbines) => set({ externalTurbines: turbines }),
+      setMapFeatures: (features) => set({ mapFeatures: features }),
       setTurbines: (turbines) => set({ turbines }),
       updateTurbine: (id, data) =>
         set((state) => ({
