@@ -81,60 +81,63 @@ export function Header({ currentView = 'map', onViewChange }: HeaderProps) {
   };
 
   return (
-    <header className="h-14 border-b bg-card flex items-center justify-between px-4 md:px-6 flex-shrink-0 z-20 shadow-sm relative">
-      <div className="flex items-center gap-3">
-        <div className="bg-primary/20 p-1.5 rounded-md hidden md:block">
+    <header className="h-14 border-b bg-card flex items-center justify-between px-3 md:px-6 flex-shrink-0 z-20 shadow-sm relative">
+      <div className="flex items-center gap-2 md:gap-3">
+        <div className="bg-primary/20 p-1.5 rounded-md hidden sm:block">
           <Wind className="w-5 h-5 text-primary" />
         </div>
-        <div>
-          <h1 className="font-semibold text-sm leading-tight">Wind Farm Micrositing Tool</h1>
-          <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">MNRE & IEC Compliant</p>
+        <div className="min-w-0">
+          <h1 className="font-semibold text-xs md:text-sm leading-tight truncate">Wind Farm Tool</h1>
+          <p className="text-[8px] md:text-[10px] text-muted-foreground uppercase tracking-wider font-medium truncate">MNRE & IEC Compliant</p>
         </div>
       </div>
       
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1.5 md:gap-2">
         <button 
           onClick={handleNewProject}
-          className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium border rounded-md hover:bg-muted transition-colors text-muted-foreground"
+          title="New Project"
+          className="flex items-center gap-2 px-2 md:px-3 py-1.5 text-xs font-medium border rounded-md hover:bg-muted transition-colors text-muted-foreground"
         >
           <Plus className="w-3.5 h-3.5" />
-          <span className="hidden sm:inline">New Project</span>
+          <span className="hidden lg:inline">New Project</span>
         </button>
 
-        <div className="w-[1px] h-6 bg-border mx-1 hidden sm:block" />
+        <div className="w-[1px] h-6 bg-border mx-0.5 hidden sm:block" />
 
         {currentView === 'report' ? (
           <button 
             onClick={() => onViewChange?.('map')}
-            className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium border rounded-md hover:bg-muted transition-colors"
+            className="flex items-center gap-2 px-2 md:px-3 py-1.5 text-xs font-medium border rounded-md hover:bg-muted transition-colors"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Back to Map</span>
+            <span className="hidden sm:inline">Map</span>
           </button>
         ) : (
           <button 
             onClick={() => onViewChange?.('report')}
-            className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium border rounded-md hover:bg-muted transition-colors text-primary border-primary/20 bg-primary/5"
+            className="flex items-center gap-2 px-2 md:px-3 py-1.5 text-xs font-medium border rounded-md hover:bg-muted transition-colors text-primary border-primary/20 bg-primary/5"
           >
             <FileText className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">View EYA Report</span>
+            <span className="hidden sm:inline">EYA Report</span>
           </button>
         )}
 
         <button 
           onClick={handleExportKML}
-          className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium border rounded-md hover:bg-muted transition-colors hidden sm:flex"
+          title="Export KML"
+          className="flex items-center gap-2 px-2 md:px-3 py-1.5 text-xs font-medium border rounded-md hover:bg-muted transition-colors hidden sm:flex"
         >
           <Download className="w-3.5 h-3.5" />
-          <span className="hidden md:inline">Export KML</span>
+          <span className="hidden lg:inline">Export KML</span>
         </button>
 
         <button 
           onClick={handleExportPDF}
-          className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium border rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+          title="Download PDF"
+          className="flex items-center gap-2 px-2 md:px-3 py-1.5 text-xs font-medium border rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
         >
           <Download className="w-3.5 h-3.5" />
-          <span className="hidden md:inline">Download PDF</span>
+          <span className="hidden sm:inline">PDF</span>
         </button>
       </div>
     </header>

@@ -36,17 +36,17 @@ export function EYAReportPage() {
   const { individualReports, summary } = results;
 
   return (
-    <div className="flex-1 overflow-y-auto bg-background print:bg-white p-4 md:p-8 space-y-8">
+    <div className="flex-1 overflow-y-auto bg-background print:bg-white p-2 sm:p-4 md:p-8 space-y-6 md:space-y-8">
       {/* 1. Engineering Header Section */}
       <div className="bg-white border rounded-xl overflow-hidden shadow-sm">
-        <div className="bg-slate-900 text-white px-6 py-4 flex justify-between items-center">
+        <div className="bg-slate-900 text-white px-4 md:px-6 py-3 md:py-4 flex justify-between items-center">
           <div>
-            <h1 className="text-xl font-bold uppercase tracking-tight">Long-Term Energy Yield Assessment</h1>
-            <p className="text-slate-400 text-xs mt-1">Professional Micrositing & EYA Report</p>
+            <h1 className="text-sm md:text-xl font-bold uppercase tracking-tight">Long-Term Energy Yield Assessment</h1>
+            <p className="text-slate-400 text-[10px] md:text-xs mt-0.5 md:mt-1">Professional Micrositing & EYA Report</p>
           </div>
         </div>
         
-        <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-8 bg-white">
+        <div className="p-4 md:p-6 grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8 bg-white">
           <div className="space-y-1">
             <div className="grid grid-cols-2 gap-4 text-sm border-b pb-2">
               <span className="text-slate-500">Project:</span>
@@ -106,15 +106,15 @@ export function EYAReportPage() {
       {/* 2. Loss Accounting & P-Tables */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className="bg-white border rounded shadow-sm overflow-hidden flex flex-col">
-          <div className="bg-[#1e293b] text-white px-4 py-2 font-bold text-sm uppercase text-center">
+          <div className="bg-[#1e293b] text-white px-4 py-2 font-bold text-xs md:text-sm uppercase text-center">
             Detailed Loss Summary
           </div>
-          <div className="flex-1 overflow-x-auto">
-            <table className="w-full text-[11px] border-collapse bg-white">
+          <div className="flex-1 overflow-x-auto scrollbar-thin">
+            <table className="w-full text-[10px] md:text-[11px] border-collapse bg-white min-w-[300px]">
               <thead className="bg-slate-100 border-b-2 border-slate-200">
                 <tr>
-                  <th className="px-3 py-1.5 text-left border-r text-slate-700">Loss Category</th>
-                  <th className="px-3 py-1.5 text-right w-24 text-slate-700">Long-Term (%)</th>
+                  <th className="px-2 md:px-3 py-1.5 text-left border-r text-slate-700">Loss Category</th>
+                  <th className="px-2 md:px-3 py-1.5 text-right w-20 md:w-24 text-slate-700">Long-Term (%)</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -147,16 +147,16 @@ export function EYAReportPage() {
 
         <div className="space-y-6">
           <div className="bg-white border rounded shadow-sm overflow-hidden">
-            <div className="bg-[#1e293b] text-white px-4 py-2 font-bold text-sm uppercase text-center">
+            <div className="bg-[#1e293b] text-white px-4 py-2 font-bold text-xs md:text-sm uppercase text-center">
               Probability of Exceedance (P-Tables)
             </div>
-            <div className="p-4 overflow-x-auto">
-              <table className="w-full text-xs border-collapse">
+            <div className="p-2 md:p-4 overflow-x-auto">
+              <table className="w-full text-[10px] md:text-xs border-collapse">
                 <thead className="bg-slate-50 border-b">
                   <tr>
-                    <th className="px-4 py-2 text-left border-r">Probability Level</th>
-                    <th className="px-4 py-2 text-right">Energy (GWh/yr)</th>
-                    <th className="px-4 py-2 text-right">PLF (%)</th>
+                    <th className="px-2 md:px-4 py-2 text-left border-r">Probability Level</th>
+                    <th className="px-2 md:px-4 py-2 text-right">Energy (GWh/yr)</th>
+                    <th className="px-2 md:px-4 py-2 text-right">PLF (%)</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y">
@@ -179,10 +179,10 @@ export function EYAReportPage() {
           </div>
 
           <div className="bg-emerald-50 border border-emerald-200 rounded p-4">
-            <div className="flex items-center gap-2 mb-3 text-emerald-800 font-bold text-sm">
+            <div className="flex items-center gap-2 mb-3 text-emerald-800 font-bold text-xs md:text-sm">
               <ShieldAlert className="w-4 h-4" /> MNRE Compliance Summary
             </div>
-            <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-[11px]">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2 text-[10px] md:text-[11px]">
               <span className="text-emerald-700">Along-wind Spacing (7D):</span>
               <span className="font-bold text-slate-800">{(turbineModel.rotorDiameter * 7).toFixed(0)} m</span>
               <span className="text-emerald-700">Cross-wind Spacing (5D):</span>
@@ -241,7 +241,7 @@ export function EYAReportPage() {
           </div>
           <div className="text-[10px] text-slate-500 font-mono">Coordinates System: WGS84 UTM</div>
         </div>
-        <div className="overflow-x-auto bg-white">
+        <div className="overflow-x-auto bg-white scrollbar-thin">
           <table className="w-full text-left border-collapse min-w-[1200px]">
             <thead>
               <tr className="bg-slate-50 text-[10px] uppercase tracking-wider text-slate-600 border-b font-bold">

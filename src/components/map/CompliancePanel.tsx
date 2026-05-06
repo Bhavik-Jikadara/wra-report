@@ -45,7 +45,7 @@ export function CompliancePanel() {
   const totalChecks = checks.length - 1; // excluding 'not provided'
 
   return (
-    <div className="absolute bottom-4 right-4 z-10 w-80 bg-card rounded-md shadow-lg border overflow-hidden flex flex-col max-h-[calc(100vh-100px)]">
+    <div className="absolute bottom-4 right-4 z-10 w-[calc(100vw-32px)] sm:w-80 bg-card rounded-md shadow-lg border overflow-hidden flex flex-col max-h-[calc(100vh-100px)]">
       <div 
         className={cn(
           "px-4 py-3 flex items-center justify-between cursor-pointer select-none",

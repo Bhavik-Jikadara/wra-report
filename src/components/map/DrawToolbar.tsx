@@ -16,7 +16,7 @@ export function DrawToolbar({ activeMode, onSetMode }: Omit<DrawToolbarProps, 'o
   ];
 
   return (
-    <div className="absolute top-4 left-4 z-10 bg-card rounded-md shadow-lg border overflow-hidden flex flex-col">
+    <div className="absolute top-16 lg:top-4 left-4 z-10 bg-card rounded-md shadow-lg border overflow-hidden flex flex-col">
       <div className="flex flex-col">
         {tools.map(t => (
           <button
