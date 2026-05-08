@@ -1,75 +1,106 @@
-import { Hexagon, Route, MousePointer2, Ruler } from 'lucide-react';
+import { Hexagon, MousePointer2, Minus, Spline, Pentagon, Circle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import type { RulerMode } from './RulerPanel';
 
 interface DrawToolbarProps {
   activeMode: string;
   onSetMode: (mode: string) => void;
+  isRulerOpen: boolean;
+  rulerMode: RulerMode;
+  onOpenRuler: (mode: RulerMode) => void;
 }
 
-export function DrawToolbar({ activeMode, onSetMode }: DrawToolbarProps) {
-  const tools = [
-    { 
-      id: 'simple_select', 
-      icon: MousePointer2, 
-      title: 'Select & Edit',
-      description: 'Move and modify existing drawings'
-    },
-    { 
-      id: 'draw_line_string', 
-      icon: Route, 
-      title: 'Measure Distance',
-      description: 'Click to start measuring path distance'
-    },
-    { 
-      id: 'draw_polygon', 
-      icon: Hexagon, 
-      title: 'Draw Area',
-      description: 'Define custom boundaries or zones'
-    },
-  ];
+const drawTools = [
+  {
+    id: 'simple_select',
+    icon: MousePointer2,
+    title: 'Select',
+    description: 'Select & move features',
+  },
+  {
+    id: 'draw_polygon',
+    icon: Hexagon,
+    title: 'Draw',
+    description: 'Draw boundary or exclusion zone',
+  },
+] as const;
+
+const rulerTools: { id: RulerMode; icon: React.ElementType; title: string; description: string }[] = [
+  { id: 'line',    icon: Minus,    title: 'Line',    description: 'Measure distance between two points' },
+  { id: 'path',    icon: Spline,   title: 'Path',    description: 'Measure distance along a multi-point path' },
+  { id: 'polygon', icon: Pentagon, title: 'Polygon', description: 'Measure perimeter & area of a shape' },
+  { id: 'circle',  icon: Circle,   title: 'Circle',  description: 'Measure radius & area of a circle' },
+];
+
+export function DrawToolbar({ activeMode, onSetMode, isRulerOpen, rulerMode, onOpenRuler }: DrawToolbarProps) {
+  const activeDrawLabel  = drawTools.find((t) => t.id === activeMode)?.title;
+  const activeRulerLabel = isRulerOpen ? rulerTools.find((t) => t.id === rulerMode)?.title : null;
+  const activeLabel      = activeRulerLabel ?? activeDrawLabel ?? 'Select';
 
   return (
-    <div className="absolute top-4 left-4 z-10 flex flex-col gap-2">
-      <div className="bg-card rounded-lg shadow-xl border overflow-hidden flex flex-col min-w-[50px]">
-        <div className="px-3 py-2 border-b bg-muted/30 flex items-center gap-2">
-          <Ruler className="w-3.5 h-3.5 text-primary" />
-          <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Tools</span>
-        </div>
-        <TooltipProvider delayDuration={0}>
-          <div className="flex flex-col">
-            {tools.map(t => (
-              <Tooltip key={t.id}>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={() => onSetMode(t.id)}
-                    className={cn(
-                      "p-3.5 transition-all flex items-center justify-center relative",
-                      activeMode === t.id 
-                        ? "bg-primary text-primary-foreground shadow-inner" 
-                        : "hover:bg-muted text-foreground/70 hover:text-foreground"
-                    )}
-                  >
-                    <t.icon className={cn("w-5 h-5", activeMode === t.id ? "scale-110" : "")} />
-                    {activeMode === t.id && (
-                      <div className="absolute left-0 top-0 w-1 h-full bg-white/30" />
-                    )}
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="right" className="flex flex-col gap-1 p-3">
-                  <span className="font-bold text-sm">{t.title}</span>
-                  <span className="text-xs text-muted-foreground">{t.description}</span>
-                </TooltipContent>
-              </Tooltip>
-            ))}
-          </div>
-        </TooltipProvider>
+    <TooltipProvider delayDuration={0}>
+      <div className="absolute top-3 left-3 z-10 flex items-center gap-0.5 bg-black/70 backdrop-blur-md rounded-full px-1.5 py-1.5 border border-white/10 shadow-lg">
+
+        {/* Draw tools */}
+        {drawTools.map((t, idx) => (
+          <span key={t.id} className="flex items-center">
+            {idx > 0 && <span className="w-px h-4 bg-white/15 mx-1 flex-shrink-0" />}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => onSetMode(t.id)}
+                  className={cn(
+                    'w-7 h-7 rounded-full flex items-center justify-center transition-all flex-shrink-0',
+                    !isRulerOpen && activeMode === t.id
+                      ? 'bg-primary text-white shadow-inner'
+                      : 'text-white/60 hover:text-white hover:bg-white/10'
+                  )}
+                >
+                  <t.icon className="w-3.5 h-3.5" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" sideOffset={8} className="p-2">
+                <p className="font-semibold text-xs">{t.title}</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">{t.description}</p>
+              </TooltipContent>
+            </Tooltip>
+          </span>
+        ))}
+
+        {/* Divider */}
+        <span className="w-px h-4 bg-white/15 mx-1 flex-shrink-0" />
+
+        {/* Ruler mode buttons */}
+        {rulerTools.map((t, idx) => (
+          <span key={t.id} className="flex items-center">
+            {idx > 0 && <span className="w-px h-3.5 bg-white/10 mx-0.5 flex-shrink-0" />}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => onOpenRuler(t.id)}
+                  className={cn(
+                    'w-7 h-7 rounded-full flex items-center justify-center transition-all flex-shrink-0',
+                    isRulerOpen && rulerMode === t.id
+                      ? 'bg-amber-500 text-white shadow-inner'
+                      : 'text-white/60 hover:text-white hover:bg-white/10'
+                  )}
+                >
+                  <t.icon className="w-3.5 h-3.5" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" sideOffset={8} className="p-2">
+                <p className="font-semibold text-xs">{t.title}</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">{t.description}</p>
+              </TooltipContent>
+            </Tooltip>
+          </span>
+        ))}
+
+        {/* Active mode label */}
+        <span className="w-px h-4 bg-white/15 mx-1 flex-shrink-0" />
+        <span className="text-[10px] text-white/50 pr-1.5 font-medium select-none">{activeLabel}</span>
       </div>
-      
-      {/* Active Mode Label - Mobile/Desktop visibility helper */}
-      <div className="bg-black/60 backdrop-blur-md text-white px-3 py-1.5 rounded-full text-[10px] font-medium border border-white/10 shadow-lg self-start">
-        Mode: {tools.find(t => t.id === activeMode)?.title || 'Custom'}
-      </div>
-    </div>
+    </TooltipProvider>
   );
 }

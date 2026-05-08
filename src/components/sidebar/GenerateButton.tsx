@@ -61,15 +61,13 @@ export function GenerateButton() {
   };
 
   return (
-    <div className="p-4 border-t bg-muted/50 mt-auto">
-      <button 
-        onClick={handleGenerate}
-        disabled={isGenerating || !projectBoundary}
-        className="w-full bg-primary text-primary-foreground font-semibold py-2 rounded-md hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-      >
-        {isGenerating ? <Loader2 className="w-5 h-5 animate-spin" /> : null}
-        {isGenerating ? 'Generating...' : 'Generate Micrositing'}
-      </button>
-    </div>
+    <button
+      onClick={handleGenerate}
+      disabled={isGenerating || !projectBoundary}
+      className="w-full bg-primary text-primary-foreground font-semibold py-2.5 rounded-md hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm"
+    >
+      {isGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+      {isGenerating ? 'Generating Layout...' : 'Generate Micrositing'}
+    </button>
   );
 }

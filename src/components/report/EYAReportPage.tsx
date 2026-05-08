@@ -4,7 +4,7 @@ import { calculateEYA } from '@/lib/eya';
 import turbineModelsData from '@/data/turbineModels.json';
 import type { TurbineModel } from '@/types';
 import { PowerCurveChart } from '@/components/charts/PowerCurveChart';
-import { FileText, ShieldAlert, BarChart3 } from 'lucide-react';
+import { FileText, ShieldAlert, BarChart3, Wind } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const turbineModels = turbineModelsData as unknown as TurbineModel[];
@@ -26,9 +26,14 @@ export function EYAReportPage() {
 
   if (turbines.length === 0 || !results) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center h-full p-8 text-center bg-background">
-        <h2 className="text-2xl font-bold mb-2">No Turbines Placed</h2>
-        <p className="text-muted-foreground">Please return to the map and generate a micrositing layout first.</p>
+      <div className="flex-1 flex flex-col items-center justify-center h-full p-8 text-center bg-background gap-4">
+        <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center">
+          <BarChart3 className="w-8 h-8 text-muted-foreground" />
+        </div>
+        <div>
+          <h2 className="text-xl font-bold mb-1">No Turbines Placed Yet</h2>
+          <p className="text-muted-foreground text-sm max-w-sm">Return to the map view, upload a project boundary, configure your turbine settings, and click <strong>Generate Micrositing</strong> to create a layout.</p>
+        </div>
       </div>
     );
   }
@@ -41,8 +46,12 @@ export function EYAReportPage() {
       <div className="bg-white border rounded-xl overflow-hidden shadow-sm">
         <div className="bg-slate-900 text-white px-4 md:px-6 py-3 md:py-4 flex justify-between items-center">
           <div>
-            <h1 className="text-sm md:text-xl font-bold uppercase tracking-tight">Long-Term Energy Yield Assessment</h1>
-            <p className="text-slate-400 text-[10px] md:text-xs mt-0.5 md:mt-1">Professional Micrositing & EYA Report</p>
+            <p className="text-slate-400 text-[10px] md:text-xs uppercase tracking-widest mb-1">Long-Term Energy Yield Assessment</p>
+            <h1 className="text-base md:text-2xl font-bold tracking-tight">{projectName || 'Wind Farm Project'}</h1>
+          </div>
+          <div className="hidden md:flex items-center gap-2 bg-white/10 px-3 py-2 rounded-lg">
+            <Wind className="w-4 h-4 text-emerald-400" />
+            <span className="text-sm font-bold text-emerald-400">{(turbines.length * turbineModel.ratedKW / 1000).toFixed(1)} MW</span>
           </div>
         </div>
         
@@ -50,11 +59,11 @@ export function EYAReportPage() {
           <div className="space-y-1">
             <div className="grid grid-cols-2 gap-4 text-sm border-b pb-2">
               <span className="text-slate-500">Project:</span>
-              <span className="font-semibold text-slate-900">{projectName || 'Project Alpha'}</span>
+              <span className="font-semibold text-slate-900">{projectName || 'Wind Farm Project'}</span>
             </div>
             <div className="grid grid-cols-2 gap-4 text-sm border-b py-2">
-              <span className="text-slate-500">Date:</span>
-              <span className="font-semibold text-slate-900">{new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: '2-digit' })}</span>
+              <span className="text-slate-500">Report Date:</span>
+              <span className="font-semibold text-slate-900">{new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })}</span>
             </div>
             <div className="grid grid-cols-2 gap-4 text-sm border-b py-2">
               <span className="text-slate-500">Turbine Model:</span>
@@ -241,7 +250,7 @@ export function EYAReportPage() {
           </div>
           <div className="text-[10px] text-slate-500 font-mono">Coordinates System: WGS84 UTM</div>
         </div>
-        <div className="overflow-x-auto bg-white scrollbar-thin">
+        <div className="overflow-x-auto bg-white scrollbar-thin overflow-y-hidden">
           <table className="w-full text-left border-collapse min-w-[1200px]">
             <thead>
               <tr className="bg-slate-50 text-[10px] uppercase tracking-wider text-slate-600 border-b font-bold">

@@ -85,9 +85,7 @@ export function BoundaryUploader() {
 
   const handleRemove = () => {
     setFileName(null);
-    setProjectBoundary({ type: 'FeatureCollection', features: [] } as any); // Reset to empty or null. The store uses null for initial state. Wait, I should set to null but the type might be strict.
-    // Let's check type in store: FeatureCollection | null
-    // Yes, null is allowed but I need to ensure typescript is happy.
+    setProjectBoundary(null);
   };
 
   // Compute stats if boundary exists
@@ -154,7 +152,7 @@ export function BoundaryUploader() {
               </div>
             </div>
             <button 
-              onClick={(e) => { e.stopPropagation(); handleRemove(); useProjectStore.getState().setProjectBoundary(null as any) }} 
+              onClick={(e) => { e.stopPropagation(); handleRemove(); }}
               className="p-1 hover:bg-muted-foreground/20 rounded text-muted-foreground"
               title="Remove boundary"
             >
