@@ -40,8 +40,11 @@ export function BoundaryUploader() {
             `Found ${waterbodies.features.length} water bodies, ${dwellings.features.length} dwellings`,
             { id: t }
           );
-        } catch {
-          toast.dismiss(t);
+        } catch (err) {
+          toast.error(
+            err instanceof Error ? err.message : 'OSM feature fetch failed — check your internet connection',
+            { id: t }
+          );
         }
       }
     } catch (err) {

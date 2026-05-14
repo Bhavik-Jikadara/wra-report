@@ -276,8 +276,14 @@ export function MapEditor() {
     if (mapFeatures) {
       if (!m.getSource('map-features-source')) {
         m.addSource('map-features-source', { type: 'geojson', data: mapFeatures });
-        m.addLayer({ id: 'map-features-fill', type: 'fill', source: 'map-features-source', paint: { 'fill-color': ['match',['get','type'],'water','#3b82f6','dwelling','#ef4444','#8b5cf6'], 'fill-opacity': 0.2 } });
-        m.addLayer({ id: 'map-features-line', type: 'line', source: 'map-features-source', paint: { 'line-color': ['match',['get','type'],'water','#3b82f6','dwelling','#ef4444','#8b5cf6'], 'line-width': 1.5 } });
+        // Polygon fill (water blue, dwelling red)
+        m.addLayer({ id: 'map-features-fill', type: 'fill', source: 'map-features-source', filter: ['==', ['geometry-type'], 'Polygon'], paint: { 'fill-color': ['match',['get','type'],'water','#3b82f6','dwelling','#ef4444','#8b5cf6'], 'fill-opacity': 0.25 } });
+        // Polygon + LineString outline
+        m.addLayer({ id: 'map-features-line', type: 'line', source: 'map-features-source', filter: ['any', ['==', ['geometry-type'], 'Polygon'], ['==', ['geometry-type'], 'LineString']], paint: { 'line-color': ['match',['get','type'],'water','#3b82f6','dwelling','#ef4444','#8b5cf6'], 'line-width': 1.5 } });
+        // Point features (village/settlement nodes)
+        m.addLayer({ id: 'map-features-point', type: 'circle', source: 'map-features-source', filter: ['==', ['geometry-type'], 'Point'], paint: { 'circle-radius': 6, 'circle-color': ['match',['get','type'],'dwelling','#ef4444','#8b5cf6'], 'circle-stroke-width': 2, 'circle-stroke-color': '#ffffff', 'circle-opacity': 0.85 } });
+        // Point labels
+        m.addLayer({ id: 'map-features-label', type: 'symbol', source: 'map-features-source', filter: ['==', ['geometry-type'], 'Point'], layout: { 'text-field': ['get', 'label'], 'text-size': 10, 'text-offset': [0, 1.2], 'text-anchor': 'top', 'text-optional': true }, paint: { 'text-color': '#ffffff', 'text-halo-color': '#000000', 'text-halo-width': 1 } });
       } else {
         (m.getSource('map-features-source') as maplibregl.GeoJSONSource).setData(mapFeatures);
       }
@@ -294,7 +300,7 @@ export function MapEditor() {
     mapFeatures?.features.forEach((f) => {
       try {
         const type = (f.properties as any)?.type as string | undefined;
-        const km = type === 'dwelling' ? 0.5 : type === 'water' ? 0.1 : null;
+        const km = type === 'dwelling' ? 0.5 : type === 'water' ? 0.5 : null;
         if (!km) return;
         const b = buffer(f as any, km, { units: 'kilometers' });
         if (b) bufs.push({ ...b, properties: { ...(b.properties ?? {}), featureType: type } });
@@ -454,7 +460,7 @@ function MapLegend() {
       </div>
       {hasFeatures && (<>
         <div className="flex items-center gap-2"><span className="w-4 h-2 rounded-sm flex-shrink-0 border border-dashed" style={{ borderColor: '#ef4444', background: 'rgba(239,68,68,0.1)' }} /><span className="text-white/80">Dwelling Setback (500 m)</span></div>
-        <div className="flex items-center gap-2"><span className="w-4 h-2 rounded-sm flex-shrink-0 border border-dashed" style={{ borderColor: '#3b82f6', background: 'rgba(59,130,246,0.1)' }} /><span className="text-white/80">Water Setback (100 m)</span></div>
+        <div className="flex items-center gap-2"><span className="w-4 h-2 rounded-sm flex-shrink-0 border border-dashed" style={{ borderColor: '#3b82f6', background: 'rgba(59,130,246,0.1)' }} /><span className="text-white/80">Water Setback (500 m)</span></div>
       </>)}
       {turbines.length > 0 && (
         <div className="flex items-center gap-2"><span className="w-3 h-4 rounded-b-full flex-shrink-0" style={{ background: '#64748b', opacity: 0.7 }} /><span className="text-white/80">External WTG</span></div>
