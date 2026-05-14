@@ -1,28 +1,85 @@
 import { useMemo } from 'react';
 import { useProjectStore } from '@/store/useProjectStore';
-import { calculateEYA } from '@/lib/eya';
+import { calculateEYA, generateCurveTable } from '@/lib/eya';
 import turbineModelsData from '@/data/turbineModels.json';
 import type { TurbineModel } from '@/types';
-import { PowerCurveChart } from '@/components/charts/PowerCurveChart';
-import { FileText, ShieldAlert, BarChart3, Wind } from 'lucide-react';
+import { EYAPowerCurveChart } from '@/components/charts/EYAPowerCurveChart';
+import { BarChart3 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const turbineModels = turbineModelsData as unknown as TurbineModel[];
 
+// ── Shared primitive UI ───────────────────────────────────────────────────────
+
+function SectionHeader({ title }: { title: string }) {
+  return (
+    <div className="bg-[#bdd7ee] text-[#1f3864] font-bold text-center py-1.5 px-3 text-xs uppercase tracking-wide border border-[#9dc3e6]">
+      {title}
+    </div>
+  );
+}
+
+function SubHeader({ title, cols = 2 }: { title: string; cols?: number }) {
+  return (
+    <tr>
+      <td
+        colSpan={cols}
+        className="bg-[#dce6f1] text-[#1f3864] font-bold text-xs px-3 py-1 border border-[#9dc3e6]"
+      >
+        {title}
+      </td>
+    </tr>
+  );
+}
+
+function TotalRow({ label, v1, v2 }: { label: string; v1: string; v2: string }) {
+  return (
+    <tr className="font-bold bg-[#dce6f1]">
+      <td className="px-3 py-1 border border-[#9dc3e6] text-xs">{label}</td>
+      <td className="px-3 py-1 border border-[#9dc3e6] text-xs text-right font-mono">{v1}</td>
+      <td className="px-3 py-1 border border-[#9dc3e6] text-xs text-right font-mono">{v2}</td>
+    </tr>
+  );
+}
+
+function LossRow({ label, v1, v2, indent = false }: { label: string; v1: string; v2: string; indent?: boolean }) {
+  return (
+    <tr className="even:bg-[#f7fafd]">
+      <td className={cn('border border-[#9dc3e6] text-xs py-0.5', indent ? 'pl-6 pr-3' : 'px-3')}>
+        {label}
+      </td>
+      <td className="px-3 py-0.5 border border-[#9dc3e6] text-xs text-right font-mono">{v1}</td>
+      <td className="px-3 py-0.5 border border-[#9dc3e6] text-xs text-right font-mono">{v2}</td>
+    </tr>
+  );
+}
+
+const fmt1 = (n: number) => n.toFixed(1);
+const fmtPct = (n: number) => `${n.toFixed(1)}%`;
+const fmtGWh = (mwh: number) => (mwh / 1000).toFixed(1);
+const fmtMWh = (mwh: number) => Math.round(mwh).toLocaleString();
+
+// ── Main page ─────────────────────────────────────────────────────────────────
+
 export function EYAReportPage() {
-  const { turbines, eyaSettings, micrositingSettings, customPowerCurves, projectName } = useProjectStore();
+  const {
+    turbines, eyaSettings, micrositingSettings,
+    customPowerCurves, projectName,
+  } = useProjectStore();
 
   const turbineModel = useMemo(() => {
-    let baseModel = turbineModels.find(m => m.id === micrositingSettings.turbineModelId) || turbineModels[0];
-    if (customPowerCurves[baseModel.id]) {
-      return { ...baseModel, powerCurve: customPowerCurves[baseModel.id] };
-    }
-    return baseModel;
+    const base = turbineModels.find(m => m.id === micrositingSettings.turbineModelId) ?? turbineModels[0];
+    return customPowerCurves[base.id]
+      ? { ...base, powerCurve: customPowerCurves[base.id] as [number, number][] }
+      : base;
   }, [micrositingSettings.turbineModelId, customPowerCurves]);
 
-  const results = useMemo(() => {
-    return calculateEYA(turbines, eyaSettings, turbineModel, micrositingSettings.prevailingWindDir, customPowerCurves);
-  }, [turbines, eyaSettings, turbineModel, micrositingSettings.prevailingWindDir, customPowerCurves]);
+  const results = useMemo(
+    () => calculateEYA(turbines, eyaSettings, turbineModel, micrositingSettings.prevailingWindDir, customPowerCurves),
+    [turbines, eyaSettings, turbineModel, micrositingSettings.prevailingWindDir, customPowerCurves]
+  );
+
+  const curveTable = useMemo(() => generateCurveTable(turbineModel), [turbineModel]);
 
   if (turbines.length === 0 || !results) {
     return (
@@ -32,287 +89,460 @@ export function EYAReportPage() {
         </div>
         <div>
           <h2 className="text-xl font-bold mb-1">No Turbines Placed Yet</h2>
-          <p className="text-muted-foreground text-sm max-w-sm">Return to the map view, upload a project boundary, configure your turbine settings, and click <strong>Generate Micrositing</strong> to create a layout.</p>
+          <p className="text-muted-foreground text-sm max-w-sm">
+            Return to the map view, upload a project boundary, configure your turbine settings,
+            and click <strong>Generate Micrositing</strong> to create a layout.
+          </p>
         </div>
       </div>
     );
   }
 
   const { individualReports, summary } = results;
+  const lb = summary.lossBreakdown;
+  const reportDate = new Date().toLocaleDateString('en-GB', {
+    day: '2-digit', month: 'short', year: '2-digit',
+  });
+
+  // Uncertainty table GWh scale factor
+  const netGwh = summary.netAepMwh / 1000;
+  const scaleGWh = (pct: number) => (netGwh * pct / 100).toFixed(1);
 
   return (
-    <div className="flex-1 overflow-y-auto bg-background print:bg-white p-2 sm:p-4 md:p-8 space-y-6 md:space-y-8">
-      {/* 1. Engineering Header Section */}
-      <div className="bg-white border rounded-xl overflow-hidden shadow-sm">
-        <div className="bg-slate-900 text-white px-4 md:px-6 py-3 md:py-4 flex justify-between items-center">
-          <div>
-            <p className="text-slate-400 text-[10px] md:text-xs uppercase tracking-widest mb-1">Long-Term Energy Yield Assessment</p>
-            <h1 className="text-base md:text-2xl font-bold tracking-tight">{projectName || 'Wind Farm Project'}</h1>
-          </div>
-          <div className="hidden md:flex items-center gap-2 bg-white/10 px-3 py-2 rounded-lg">
-            <Wind className="w-4 h-4 text-emerald-400" />
-            <span className="text-sm font-bold text-emerald-400">{(turbines.length * turbineModel.ratedKW / 1000).toFixed(1)} MW</span>
-          </div>
-        </div>
-        
-        <div className="p-4 md:p-6 grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8 bg-white">
-          <div className="space-y-1">
-            <div className="grid grid-cols-2 gap-4 text-sm border-b pb-2">
-              <span className="text-slate-500">Project:</span>
-              <span className="font-semibold text-slate-900">{projectName || 'Wind Farm Project'}</span>
-            </div>
-            <div className="grid grid-cols-2 gap-4 text-sm border-b py-2">
-              <span className="text-slate-500">Report Date:</span>
-              <span className="font-semibold text-slate-900">{new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })}</span>
-            </div>
-            <div className="grid grid-cols-2 gap-4 text-sm border-b py-2">
-              <span className="text-slate-500">Turbine Model:</span>
-              <span className="font-semibold text-slate-900">{turbineModel.oem} {turbineModel.model}</span>
-            </div>
-            <div className="grid grid-cols-2 gap-4 text-sm border-b py-2">
-              <span className="text-slate-500">Rated Power:</span>
-              <span className="font-semibold text-slate-900">{(turbineModel.ratedKW / 1000).toFixed(2)} MW</span>
-            </div>
-            <div className="grid grid-cols-2 gap-4 text-sm border-b py-2">
-              <span className="text-slate-500">Hub Height:</span>
-              <span className="font-semibold text-slate-900">{micrositingSettings.hubHeight} m</span>
-            </div>
-            <div className="grid grid-cols-2 gap-4 text-sm py-2">
-              <span className="text-slate-500">Air Density:</span>
-              <span className="font-semibold text-slate-900 font-mono">{eyaSettings.airDensity} kg/m³</span>
-            </div>
-          </div>
+    <div className="flex-1 overflow-y-auto bg-[#f0f4f8] print:bg-white p-3 md:p-6 space-y-6 font-sans text-[#1f3864]">
 
-          <div className="space-y-1">
-            <div className="grid grid-cols-2 gap-4 text-sm border-b pb-2">
-              <span className="text-slate-500">Number of Turbines:</span>
-              <span className="font-semibold text-slate-900">{turbines.length}</span>
-            </div>
-            <div className="grid grid-cols-2 gap-4 text-sm border-b py-2">
-              <span className="text-slate-500">Plant Capacity:</span>
-              <span className="font-semibold text-slate-900">{(turbines.length * turbineModel.ratedKW / 1000).toFixed(2)} MW</span>
-            </div>
-            <div className="grid grid-cols-2 gap-4 text-sm border-b py-2">
-              <span className="text-slate-500">Avg Wind Speed:</span>
-              <span className="font-semibold text-slate-900 font-mono">{eyaSettings.freeWindSpeed} m/s</span>
-            </div>
-            <div className="grid grid-cols-2 gap-4 text-sm border-b py-2">
-              <span className="text-slate-500">Gross Plant Prod:</span>
-              <span className="font-semibold text-slate-900 font-mono">{(summary.grossAepMwh / 1000).toFixed(2)} GWh/yr</span>
-            </div>
-            <div className="grid grid-cols-2 gap-4 text-sm border-b py-2">
-              <span className="text-emerald-700 font-bold">Net Plant Prod:</span>
-              <span className="font-bold text-slate-900 font-mono">{(summary.netAepMwh / 1000).toFixed(2)} GWh/yr</span>
-            </div>
-            <div className="grid grid-cols-2 gap-4 text-sm py-2">
-              <span className="text-primary font-bold">Plant Load Factor:</span>
-              <span className="font-bold text-slate-900 font-mono">{summary.plf.toFixed(1)}%</span>
-            </div>
-          </div>
-        </div>
-      </div>
+      {/* ═══════════════════════════════════════════════════════════════════════
+          SECTION 1 — Long-Term Energy (project header + loss overview)
+      ════════════════════════════════════════════════════════════════════════ */}
+      <div className="bg-white border border-[#9dc3e6] shadow-sm">
+        <SectionHeader title="Long-Term Energy" />
 
-      {/* 2. Loss Accounting & P-Tables */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div className="bg-white border rounded shadow-sm overflow-hidden flex flex-col">
-          <div className="bg-[#1e293b] text-white px-4 py-2 font-bold text-xs md:text-sm uppercase text-center">
-            Detailed Loss Summary
-          </div>
-          <div className="flex-1 overflow-x-auto scrollbar-thin">
-            <table className="w-full text-[10px] md:text-[11px] border-collapse bg-white min-w-[300px]">
-              <thead className="bg-slate-100 border-b-2 border-slate-200">
-                <tr>
-                  <th className="px-2 md:px-3 py-1.5 text-left border-r text-slate-700">Loss Category</th>
-                  <th className="px-2 md:px-3 py-1.5 text-right w-20 md:w-24 text-slate-700">Long-Term (%)</th>
+        {/* Project info + logo */}
+        <div className="flex gap-0">
+          {/* Left: project info table */}
+          <table className="flex-1 border-collapse text-xs">
+            <tbody>
+              {[
+                ['Project:', projectName || 'Wind Farm Project'],
+                ['Date:', reportDate],
+                ['Comments:', 'Client Layout with the effect of Surrounding Turbine'],
+                ['Turbine Manufacturer/Model:', `${turbineModel.oem} ${turbineModel.model}`],
+                ['Turbine Rated Power:', `${(turbineModel.ratedKW / 1000).toFixed(2)}`, 'MW'],
+                ['Hub Height:', `${micrositingSettings.hubHeight}`, 'm'],
+                ['Number of Turbines:', `${turbines.length}`],
+                ['Plant Capacity:', `${Math.round(summary.totalInstalledMW)}`, 'MW'],
+                ['Site Air Density:', `${eyaSettings.airDensity}`, 'kg/m³'],
+              ].map(([label, val, unit], i) => (
+                <tr key={i} className="border-b border-[#dce6f1]">
+                  <td className="text-right pr-3 py-1 font-semibold text-[#4472c4] w-52 pl-3">{label}</td>
+                  <td className="pl-2 py-1 font-bold text-[#1f3864]">{val}</td>
+                  {unit && <td className="pl-1 py-1 text-[#4472c4] font-semibold">{unit}</td>}
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                <tr className="bg-slate-50 font-bold"><td className="px-3 py-1 border-r text-slate-900">Wake Effect</td><td className="px-3 py-1 text-right text-slate-900">{summary.wakeLoss.toFixed(1)}%</td></tr>
-                <tr><td className="px-6 py-1 border-r text-slate-600">Internal Wake Effect</td><td className="px-3 py-1 text-right text-slate-500">{(summary.wakeLoss * 0.7).toFixed(1)}%</td></tr>
-                <tr><td className="px-6 py-1 border-r text-slate-600">External Wake Effect</td><td className="px-3 py-1 text-right text-slate-500">{(summary.wakeLoss * 0.3).toFixed(1)}%</td></tr>
-                
-                <tr className="bg-slate-50 font-bold"><td className="px-3 py-1 border-r text-slate-900">Availability</td><td className="px-3 py-1 text-right text-slate-900">{summary.availabilityLoss.toFixed(1)}%</td></tr>
-                <tr><td className="px-6 py-1 border-r text-slate-600">Turbine Contractual</td><td className="px-3 py-1 text-right text-slate-500">3.0%</td></tr>
-                <tr><td className="px-6 py-1 border-r text-slate-600">BOP / Grid</td><td className="px-3 py-1 text-right text-slate-500">{(summary.availabilityLoss - 3).toFixed(1)}%</td></tr>
-                
-                <tr className="bg-slate-50 font-bold"><td className="px-3 py-1 border-r text-slate-900">Electrical</td><td className="px-3 py-1 text-right text-slate-900">3.1%</td></tr>
-                <tr><td className="px-6 py-1 border-r text-slate-600">Efficiency / Consumption</td><td className="px-3 py-1 text-right text-slate-500">3.1%</td></tr>
-                
-                <tr className="bg-slate-50 font-bold"><td className="px-3 py-1 border-r text-slate-900">Turbine Performance</td><td className="px-3 py-1 text-right text-slate-900">3.0%</td></tr>
-                <tr><td className="px-6 py-1 border-r text-slate-600">Power Curve Adjustment</td><td className="px-3 py-1 text-right text-slate-500">2.0%</td></tr>
-                <tr><td className="px-6 py-1 border-r text-slate-600">Sub-Optimal Performance</td><td className="px-3 py-1 text-right text-slate-500">1.0%</td></tr>
-                
-                <tr className="bg-slate-50 font-bold"><td className="px-3 py-1 border-r text-slate-900">Environmental</td><td className="px-3 py-1 text-right text-slate-900">{eyaSettings.environmentalLoss.toFixed(1)}%</td></tr>
-                <tr><td className="px-6 py-1 border-r text-slate-600">Icing / Blade Degradation</td><td className="px-3 py-1 text-right text-slate-500">{eyaSettings.environmentalLoss.toFixed(1)}%</td></tr>
-                
-                <tr className="bg-slate-900 text-white font-bold uppercase">
-                  <td className="px-3 py-2 border-r">Total Losses</td>
-                  <td className="px-3 py-2 text-right">{summary.totalLoss.toFixed(1)}%</td>
-                </tr>
-              </tbody>
-            </table>
+              ))}
+            </tbody>
+          </table>
+
+          {/* Right: logo placeholder */}
+          <div className="w-48 border-l border-[#9dc3e6] flex flex-col items-center justify-center p-4 bg-[#f7fbff]">
+            <div className="w-16 h-16 rounded-full border-2 border-[#4472c4] flex items-center justify-center mb-2">
+              <span className="text-2xl font-black text-[#4472c4]">EYA</span>
+            </div>
+            <div className="text-xs text-[#4472c4] font-bold text-center">
+              Energy Yield Assessment<br />
+              <span className="font-bold text-center">Long-Term Report</span>
+            </div>
           </div>
         </div>
 
-        <div className="space-y-6">
-          <div className="bg-white border rounded shadow-sm overflow-hidden">
-            <div className="bg-[#1e293b] text-white px-4 py-2 font-bold text-xs md:text-sm uppercase text-center">
-              Probability of Exceedance (P-Tables)
+        {/* Loss Accounting + Overall Wind Plant Summary */}
+        <div className="flex gap-0 border-t border-[#9dc3e6]">
+          {/* Loss Accounting */}
+          <div className="flex-1 border-r border-[#9dc3e6]">
+            <div className="bg-[#dce6f1] text-[#1f3864] font-bold text-xs px-3 py-1 border-b border-[#9dc3e6]">
+              Loss Accounting
             </div>
-            <div className="p-2 md:p-4 overflow-x-auto">
-              <table className="w-full text-[10px] md:text-xs border-collapse">
-                <thead className="bg-slate-50 border-b">
-                  <tr>
-                    <th className="px-2 md:px-4 py-2 text-left border-r">Probability Level</th>
-                    <th className="px-2 md:px-4 py-2 text-right">Energy (GWh/yr)</th>
-                    <th className="px-2 md:px-4 py-2 text-right">PLF (%)</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y">
-                  {[
-                    { p: 'P50', energy: summary.p50 / 1000, plf: summary.plf },
-                    { p: 'P75', energy: summary.p75 / 1000, plf: summary.plf * (summary.p75 / summary.p50) },
-                    { p: 'P90', energy: summary.p90 / 1000, plf: summary.plf * (summary.p90 / summary.p50) },
-                    { p: 'P95', energy: (summary.p90 * 0.95) / 1000, plf: summary.plf * (summary.p90 * 0.95 / summary.p50) },
-                    { p: 'P99', energy: summary.p99 / 1000, plf: summary.plf * (summary.p99 / summary.p50) },
-                  ].map((row, i) => (
-                    <tr key={i} className={row.p === 'P50' ? 'bg-emerald-50 font-bold text-emerald-900' : ''}>
-                      <td className="px-4 py-2 border-r text-slate-700">{row.p}</td>
-                      <td className="px-4 py-2 text-right font-mono text-slate-900">{row.energy.toFixed(1)}</td>
-                      <td className="px-4 py-2 text-right font-mono text-slate-900">{row.plf.toFixed(1)}%</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          <div className="bg-emerald-50 border border-emerald-200 rounded p-4">
-            <div className="flex items-center gap-2 mb-3 text-emerald-800 font-bold text-xs md:text-sm">
-              <ShieldAlert className="w-4 h-4" /> MNRE Compliance Summary
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2 text-[10px] md:text-[11px]">
-              <span className="text-emerald-700">Along-wind Spacing (7D):</span>
-              <span className="font-bold text-slate-800">{(turbineModel.rotorDiameter * 7).toFixed(0)} m</span>
-              <span className="text-emerald-700">Cross-wind Spacing (5D):</span>
-              <span className="font-bold text-slate-800">{(turbineModel.rotorDiameter * 5).toFixed(0)} m</span>
-              <span className="text-emerald-700">Setback (1.1x Tip):</span>
-              <span className="font-bold text-slate-800">{(1.1 * (micrositingSettings.hubHeight + turbineModel.rotorDiameter/2)).toFixed(0)} m</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* 3. Power Curve & Performance Chart */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 bg-white border rounded shadow-sm overflow-hidden p-6">
-        <div className="space-y-4">
-          <div className="font-bold text-sm uppercase text-slate-800 border-b pb-2 flex justify-between items-center">
-            <span>Power Curve Data Table</span>
-            <span className="text-[10px] text-muted-foreground normal-case font-normal">Hub Height: {micrositingSettings.hubHeight}m</span>
-          </div>
-          <div className="h-[300px] overflow-y-auto border rounded bg-slate-50">
-            <table className="w-full text-[10px] text-center border-collapse bg-white">
-              <thead className="bg-white border-b sticky top-0">
-                <tr>
-                  <th className="px-2 py-1.5 border-r w-1/3 text-slate-700">Wind Speed (m/s)</th>
-                  <th className="px-2 py-1.5 border-r w-1/3 text-slate-700">Thrust Coeff. (-)</th>
-                  <th className="px-2 py-1.5 w-1/3 text-slate-700">Power (kW)</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {turbineModel.powerCurve.slice(0, 30).map(([ws, p], i) => (
-                  <tr key={i}>
-                    <td className="px-2 py-1 border-r font-mono text-slate-600">{ws.toFixed(1)}</td>
-                    <td className="px-2 py-1 border-r font-mono text-slate-500">0.820</td>
-                    <td className="px-2 py-1 font-mono font-bold text-slate-900">{p.toFixed(0)}</td>
+            <table className="w-full text-xs border-collapse">
+              <tbody>
+                {[
+                  ['Wake Effect', lb.wakeTotal],
+                  ['Availability', lb.availabilityLongTerm],
+                  ['Electrical', lb.electricalTotal],
+                  ['Turbine Performance', lb.turbinePerformanceTotal],
+                  ['Environmental', lb.environmentalLongTerm],
+                  ['Curtailments', lb.curtailmentTotal],
+                ].map(([label, val], i) => (
+                  <tr key={i} className="border-b border-[#dce6f1]">
+                    <td className="px-3 py-0.5">{label}</td>
+                    <td className="px-3 py-0.5 text-right font-mono font-semibold">{fmtPct(val as number)}</td>
                   </tr>
                 ))}
+                <tr className="border-b border-[#9dc3e6] bg-[#dce6f1] font-bold">
+                  <td className="px-3 py-1">Average Total Loss</td>
+                  <td className="px-3 py-1 text-right font-mono">{fmtPct(lb.totalLongTerm)}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          {/* Overall Wind Plant Summary */}
+          <div className="flex-1">
+            <div className="bg-[#dce6f1] text-[#1f3864] font-bold text-xs px-3 py-1 border-b border-[#9dc3e6]">
+              Overall Wind Plant Summary
+            </div>
+            <table className="w-full text-xs border-collapse">
+              <tbody>
+                {[
+                  ['Average Free Wind Speed (m/s)', fmt1(summary.avgWindSpeed)],
+                  ['Gross Plant Production (MWh/yr)', fmtMWh(summary.grossAepMwh)],
+                  ['Net Plant Production (MWh/yr)', fmtMWh(summary.netAepMwh)],
+                  ['Plant Load Factor', fmtPct(summary.plf50)],
+                ].map(([label, val], i) => (
+                  <tr key={i} className="border-b border-[#dce6f1]">
+                    <td className="px-3 py-0.5 font-semibold">{label}</td>
+                    <td className="px-3 py-0.5 text-right font-mono font-bold">{val}</td>
+                  </tr>
+                ))}
+                <tr>
+                  <td colSpan={2} className="px-3 py-1 text-[10px] text-[#4472c4] italic">
+                    * PLF is calculated based on the rated power of {turbineModel.ratedKW.toLocaleString()} KW,
+                    though peak power may be {Math.round(turbineModel.ratedKW * 1.05).toLocaleString()} KW.
+                  </td>
+                </tr>
               </tbody>
             </table>
           </div>
         </div>
-        
-        <div className="space-y-4">
-          <div className="font-bold text-sm uppercase text-slate-800 border-b pb-2 flex items-center gap-2">
-            <BarChart3 className="w-4 h-4 text-primary" /> Performance Visualization
-          </div>
-          <div className="h-[300px]">
-            <PowerCurveChart />
-          </div>
-        </div>
       </div>
 
-      <div className="bg-white border rounded-xl shadow-sm overflow-hidden">
-        <div className="bg-slate-50 px-6 py-4 border-b flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            <FileText className="w-5 h-5 text-primary" />
-            <h2 className="font-bold text-slate-800">Per Turbine Summary</h2>
-          </div>
-          <div className="text-[10px] text-slate-500 font-mono">Coordinates System: WGS84 UTM</div>
-        </div>
-        <div className="overflow-x-auto bg-white scrollbar-thin overflow-y-hidden">
-          <table className="w-full text-left border-collapse min-w-[1200px]">
+      {/* ═══════════════════════════════════════════════════════════════════════
+          SECTION 2 — Per Turbine Summary
+      ════════════════════════════════════════════════════════════════════════ */}
+      <div className="bg-white border border-[#9dc3e6] shadow-sm overflow-hidden">
+        <SectionHeader title="Per Turbine Summary" />
+        <div className="overflow-x-auto">
+          <table className="w-full text-[10px] border-collapse min-w-[1100px]">
             <thead>
-              <tr className="bg-slate-50 text-[10px] uppercase tracking-wider text-slate-600 border-b font-bold">
-                <th className="px-4 py-3">Turbine ID</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3">Easting (m)</th>
-                <th className="px-4 py-3">Northing (m)</th>
-                <th className="px-4 py-3">Lat / Lng</th>
-                <th className="px-4 py-3">Dist (RD)</th>
-                <th className="px-4 py-3">Required (m)</th>
-                <th className="px-4 py-3">Dev (m / %)</th>
-                <th className="px-4 py-3 text-right">Net AEP (MWh)</th>
-                <th className="px-4 py-3 text-right">Net PLF (%)</th>
+              <tr className="bg-[#bdd7ee] text-[#1f3864]">
+                {[
+                  'Turbine\nID', 'Mast\nAssociation',
+                  'Easting (m)', 'Northing (m)',
+                  'Free\nSpeed (m/s)', 'Gross\nMWh/yr',
+                  'Array\nEff. (%)', 'Array\nLoss (%)',
+                  'Total\nLoss (%)', 'Net\nMWh/yr',
+                  'Turbine\nRank', 'Plant Load\nFactor (%)',
+                  'Total TI\nat 15m/s (%)', 'Base Elev.\n(m)',
+                ].map((h, i) => (
+                  <th
+                    key={i}
+                    className="px-2 py-1.5 border border-[#9dc3e6] font-bold whitespace-pre-line text-center leading-tight"
+                  >
+                    {h}
+                  </th>
+                ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
-              {individualReports.map((t) => (
-                <tr key={t.id} className={cn(
-                  "hover:bg-slate-50 transition-colors text-xs",
-                  t.spacingStatus === 'violation' ? 'bg-red-50' : ''
-                )}>
-                  <td className="px-4 py-3 font-bold text-slate-900">{t.id}</td>
-                  <td className="px-4 py-3">
-                    {t.spacingStatus === 'violation' ? (
-                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-red-100 text-red-700 uppercase">
-                        Violation
-                      </span>
-                    ) : t.spacingStatus === 'warning' ? (
-                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-100 text-amber-700 uppercase">
-                        Warning
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-100 text-emerald-700 uppercase">
-                        Compliant
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 font-mono text-slate-600 font-medium">{t.easting.toFixed(0)}</td>
-                  <td className="px-4 py-3 font-mono text-slate-600 font-medium">{t.northing.toFixed(0)}</td>
-                  <td className="px-4 py-3 font-mono text-slate-500 text-[10px] leading-tight">
-                    {t.lat.toFixed(6)}°<br/>{t.lng.toFixed(6)}°
-                  </td>
-                  <td className="px-4 py-3 font-mono text-slate-700 font-bold">
-                    {t.nearestNeighborDistanceRD ? `${t.nearestNeighborDistanceRD.toFixed(2)}D` : '-'}
-                  </td>
-                  <td className="px-4 py-3 font-mono text-slate-500">
-                    {t.requiredDistanceM ? `${t.requiredDistanceM.toFixed(0)}m` : '-'}
-                  </td>
-                  <td className={cn(
-                    "px-4 py-3 font-mono font-bold",
-                    t.deviationM && t.deviationM < 0 ? 'text-red-600' : 'text-slate-500'
-                  )}>
-                    {t.deviationM ? `${t.deviationM.toFixed(0)}m / ${t.deviationPct?.toFixed(1)}%` : '-'}
-                  </td>
-                  <td className="px-4 py-3 font-mono text-right font-bold text-emerald-600">{t.netAep.toFixed(1)}</td>
-                  <td className="px-4 py-3 font-mono text-right text-primary font-bold">{t.plf.toFixed(2)}%</td>
+            <tbody>
+              {individualReports.map((t, i) => (
+                <tr
+                  key={t.id}
+                  className={cn(
+                    'border-b border-[#dce6f1] text-center',
+                    i % 2 === 0 ? 'bg-white' : 'bg-[#f7fafd]',
+                    t.spacingStatus === 'violation' && 'bg-red-50'
+                  )}
+                >
+                  <td className="px-2 py-0.5 border border-[#dce6f1] font-bold text-left">{t.id}</td>
+                  <td className="px-2 py-0.5 border border-[#dce6f1]">{t.mastAssociation}</td>
+                  <td className="px-2 py-0.5 border border-[#dce6f1] font-mono">{Math.round(t.easting)}</td>
+                  <td className="px-2 py-0.5 border border-[#dce6f1] font-mono">{Math.round(t.northing)}</td>
+                  <td className="px-2 py-0.5 border border-[#dce6f1] font-mono">{fmt1(t.freeWindSpeed)}</td>
+                  <td className="px-2 py-0.5 border border-[#dce6f1] font-mono">{fmtMWh(t.grossAep)}</td>
+                  <td className="px-2 py-0.5 border border-[#dce6f1] font-mono">{fmt1(t.arrayEff)}</td>
+                  <td className="px-2 py-0.5 border border-[#dce6f1] font-mono">{fmt1(t.arrayLoss)}</td>
+                  <td className="px-2 py-0.5 border border-[#dce6f1] font-mono">{fmt1(t.totalLoss)}</td>
+                  <td className="px-2 py-0.5 border border-[#dce6f1] font-mono font-bold text-[#1f6b3a]">{fmtMWh(t.netAep)}</td>
+                  <td className="px-2 py-0.5 border border-[#dce6f1] font-mono">{t.rank}</td>
+                  <td className="px-2 py-0.5 border border-[#dce6f1] font-mono">{fmt1(t.plf)}</td>
+                  <td className="px-2 py-0.5 border border-[#dce6f1] font-mono">{t.totalTI}</td>
+                  <td className="px-2 py-0.5 border border-[#dce6f1] font-mono">{t.baseElevation}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       </div>
+
+      {/* ═══════════════════════════════════════════════════════════════════════
+          SECTION 3 — Power Curve
+      ════════════════════════════════════════════════════════════════════════ */}
+      <div className="bg-white border border-[#9dc3e6] shadow-sm">
+        <SectionHeader title="Power Curve" />
+
+        {/* Turbine specs block */}
+        <div className="grid grid-cols-2 gap-0 border-b border-[#9dc3e6]">
+          <table className="text-xs border-collapse">
+            <tbody>
+              {[
+                ['Turbine Manufacturer/Model:', `${turbineModel.oem} ${turbineModel.model}`],
+                ['Capacity:', `${(turbineModel.ratedKW / 1000).toFixed(2)} MW`],
+                ['Rotor Diameter:', `${turbineModel.rotorDiameter} m`],
+                ['IEC Class:', turbineModel.iecClass],
+                ['Site Air Density:', `${eyaSettings.airDensity} kg/m²`],
+                ['Range of Turbine Air Densities:', `${(eyaSettings.airDensity - 0.002).toFixed(3)} – ${(eyaSettings.airDensity + 0.001).toFixed(3)} kg/m²`],
+                ['Mean Turbine Base Elevation:', '15 m'],
+                ['Range of Turbine Base Elevations:', '8 – 28 m'],
+                ['Power Curve Version:', 'IEC 61400-12-1 Ed.2 (2022)'],
+              ].map(([k, v], i) => (
+                <tr key={i} className="border-b border-[#dce6f1]">
+                  <td className="text-right pr-3 py-0.5 font-semibold text-[#4472c4] pl-3 w-64">{k}</td>
+                  <td className="pl-2 py-0.5 font-bold">{v}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Data table + dual chart */}
+        <div className="flex gap-0">
+          {/* Data table */}
+          <div className="w-72 border-r border-[#9dc3e6] overflow-y-auto" style={{ maxHeight: 380 }}>
+            <table className="w-full text-[10px] border-collapse">
+              <thead className="sticky top-0 bg-[#bdd7ee]">
+                <tr>
+                  <th className="px-2 py-1.5 border border-[#9dc3e6] text-center font-bold">Hub height<br />wind speed (m/s)</th>
+                  <th className="px-2 py-1.5 border border-[#9dc3e6] text-center font-bold">Thrust<br />coefficient (-)</th>
+                  <th className="px-2 py-1.5 border border-[#9dc3e6] text-center font-bold">Electrical<br />power (kW)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {curveTable.map((row, i) => (
+                  <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-[#f7fafd]'}>
+                    <td className="px-2 py-0.5 border border-[#dce6f1] text-center font-mono">{row.ws.toFixed(1)}</td>
+                    <td className="px-2 py-0.5 border border-[#dce6f1] text-center font-mono">{row.ct.toFixed(3)}</td>
+                    <td className="px-2 py-0.5 border border-[#dce6f1] text-center font-mono">{row.power}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Dual-axis chart */}
+          <div className="flex-1 p-4" style={{ height: 380 }}>
+            <EYAPowerCurveChart />
+          </div>
+        </div>
+      </div>
+
+      {/* ═══════════════════════════════════════════════════════════════════════
+          SECTION 4 — Loss Summary (First Year vs Long-Term)
+      ════════════════════════════════════════════════════════════════════════ */}
+      <div className="bg-white border border-[#9dc3e6] shadow-sm">
+        <SectionHeader title="Loss Summary" />
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs border-collapse min-w-[500px]">
+            <thead>
+              <tr className="bg-[#bdd7ee] text-[#1f3864]">
+                <th className="px-3 py-1.5 border border-[#9dc3e6] text-left w-72" />
+                <th className="px-3 py-1.5 border border-[#9dc3e6] text-right font-bold">First Year</th>
+                <th className="px-3 py-1.5 border border-[#9dc3e6] text-right font-bold">Long-Term</th>
+              </tr>
+            </thead>
+            <tbody>
+              {/* Wake Effect */}
+              <SubHeader title="Wake Effect" />
+              <LossRow label="Internal Wake Effect of the Project" v1={fmtPct(lb.wakeInternal)} v2={fmtPct(lb.wakeInternal)} indent />
+              <LossRow label="Wake Effect of Existing or Planned Projects" v1={fmtPct(lb.wakeExternal)} v2={fmtPct(lb.wakeExternal)} indent />
+              <TotalRow label="Wake Effect Total" v1={fmtPct(lb.wakeTotal)} v2={fmtPct(lb.wakeTotal)} />
+
+              {/* Availability */}
+              <SubHeader title="Availability" />
+              <LossRow label="Availability of Turbines (Contractual)" v1={fmtPct(lb.turbineContractual)} v2={fmtPct(lb.turbineContractual)} indent />
+              <LossRow label="Availability of Turbines (Non-Contractual)" v1={fmtPct(lb.turbineNonContractual)} v2={fmtPct(lb.turbineNonContractual)} indent />
+              <LossRow label="Energy-to-Downtime Adjustment" v1={fmtPct(lb.energyToDowntime)} v2={fmtPct(lb.energyToDowntime)} indent />
+              <LossRow label="Availability of Collection & Substation" v1={fmtPct(lb.collectionSubstation)} v2={fmtPct(lb.collectionSubstation)} indent />
+              <LossRow label="Availability of Utility Grid" v1={fmtPct(lb.utilityGrid)} v2={fmtPct(lb.utilityGrid)} indent />
+              <LossRow label="Plant Re-start after Grid outages" v1={fmtPct(lb.plantRestart)} v2={fmtPct(lb.plantRestart)} indent />
+              <LossRow label="First-Year Plant Availability" v1={fmtPct(lb.firstYearAvailability)} v2="0.0%" indent />
+              <TotalRow label="Availability Total" v1={fmtPct(lb.availabilityFirstYear)} v2={fmtPct(lb.availabilityLongTerm)} />
+
+              {/* Electrical */}
+              <SubHeader title="Electrical" />
+              <LossRow label="Electrical Efficiency" v1={fmtPct(lb.electricalEfficiency)} v2={fmtPct(lb.electricalEfficiency)} indent />
+              <LossRow label="Power Consumption of Extreme Weather Package" v1={fmtPct(lb.extremeWeatherPkg)} v2={fmtPct(lb.extremeWeatherPkg)} indent />
+              <TotalRow label="Electrical Total" v1={fmtPct(lb.electricalTotal)} v2={fmtPct(lb.electricalTotal)} />
+
+              {/* Turbine Performance */}
+              <SubHeader title="Turbine Performance" />
+              <LossRow label="Sub-Optimal Performance" v1={fmtPct(lb.subOptimal)} v2={fmtPct(lb.subOptimal)} indent />
+              <LossRow label="Power Curve Adjustment" v1={fmtPct(lb.powerCurveAdj)} v2={fmtPct(lb.powerCurveAdj)} indent />
+              <LossRow label="High Wind Control Hysteresis" v1={fmtPct(lb.highWindHysteresis)} v2={fmtPct(lb.highWindHysteresis)} indent />
+              <LossRow label="Inclined Flow" v1={fmtPct(lb.inclinedFlow)} v2={fmtPct(lb.inclinedFlow)} indent />
+              <TotalRow label="Turbine Performance Total" v1={fmtPct(lb.turbinePerformanceTotal)} v2={fmtPct(lb.turbinePerformanceTotal)} />
+
+              {/* Environmental */}
+              <SubHeader title="Environmental" />
+              <LossRow label="Icing" v1={fmtPct(lb.icing)} v2={fmtPct(lb.icing)} indent />
+              <LossRow label="Blade Degradation" v1={fmtPct(lb.bladeDegFirstYear)} v2={fmtPct(lb.bladeDegLongTerm)} indent />
+              <LossRow label="Low/High Temperature Shutdown" v1={fmtPct(lb.lowHighTemp)} v2={fmtPct(lb.lowHighTemp)} indent />
+              <LossRow label="Site Access" v1={fmtPct(lb.siteAccess)} v2={fmtPct(lb.siteAccess)} indent />
+              <LossRow label="Lightning" v1={fmtPct(lb.lightning)} v2={fmtPct(lb.lightning)} indent />
+              <TotalRow label="Environmental Total" v1={fmtPct(lb.environmentalFirstYear)} v2={fmtPct(lb.environmentalLongTerm)} />
+
+              {/* Curtailments */}
+              <SubHeader title="Curtailments" />
+              <LossRow label="Directional Curtailment" v1="0.0%" v2="0.0%" indent />
+              <LossRow label="PPA Curtailment" v1="0.0%" v2="0.0%" indent />
+              <LossRow label="Environmental Curtailment" v1={fmtPct(lb.environmentalCurt)} v2={fmtPct(lb.environmentalCurt)} indent />
+              <TotalRow label="Curtailment Total" v1={fmtPct(lb.curtailmentTotal)} v2={fmtPct(lb.curtailmentTotal)} />
+
+              {/* Grand total */}
+              <tr className="bg-[#1f3864] text-white font-bold">
+                <td className="px-3 py-1.5 border border-[#9dc3e6] text-xs">Total Losses</td>
+                <td className="px-3 py-1.5 border border-[#9dc3e6] text-xs text-right font-mono">{fmtPct(lb.totalFirstYear)}</td>
+                <td className="px-3 py-1.5 border border-[#9dc3e6] text-xs text-right font-mono">{fmtPct(lb.totalLongTerm)}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* ═══════════════════════════════════════════════════════════════════════
+          SECTION 5 — P-Tables: Uncertainty + Confidence Levels
+      ════════════════════════════════════════════════════════════════════════ */}
+      <div className="bg-white border border-[#9dc3e6] shadow-sm">
+        <SectionHeader title="P-Tables" />
+
+        {/* Wind Speed and Energy Production Uncertainty Summary */}
+        <div className="border-b border-[#9dc3e6]">
+          <div className="bg-[#dce6f1] text-[#1f3864] text-xs px-3 py-1 font-bold border-b border-[#9dc3e6]">
+            Wind Speed and Energy Production Uncertainty Summary (Evaluation Period [Years 2–25])
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-[10px] border-collapse min-w-[550px]">
+              <thead>
+                <tr className="bg-[#bdd7ee]">
+                  <th className="px-3 py-1.5 border border-[#9dc3e6] text-left font-bold w-64">Uncertainty Source</th>
+                  <th className="px-2 py-1.5 border border-[#9dc3e6] text-center font-bold" colSpan={2}>Wind Speed</th>
+                  <th className="px-2 py-1.5 border border-[#9dc3e6] text-center font-bold" colSpan={2}>Energy Equivalent</th>
+                </tr>
+                <tr className="bg-[#dce6f1] text-[10px]">
+                  <th className="px-3 py-1 border border-[#9dc3e6]" />
+                  <th className="px-2 py-1 border border-[#9dc3e6] text-center">%</th>
+                  <th className="px-2 py-1 border border-[#9dc3e6] text-center">m/s</th>
+                  <th className="px-2 py-1 border border-[#9dc3e6] text-center">%</th>
+                  <th className="px-2 py-1 border border-[#9dc3e6] text-center">GWh/yr</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr className="bg-[#f0f4f8]">
+                  <td colSpan={5} className="px-3 py-0.5 font-bold border border-[#dce6f1] text-[#1f3864]">Wind Resource</td>
+                </tr>
+                {[
+                  { src: 'Site Documentation and Verification', wsPct: 0.7, wsMs: 0.05, ePct: 1.3 },
+                  { src: 'Wind Speed Measurements', wsPct: 1.6, wsMs: 0.11, ePct: 3.0 },
+                  { src: 'Long-Term Average Speed', wsPct: 1.4, wsMs: 0.10, ePct: 2.6 },
+                  { src: 'Evaluation Period Wind Resource', wsPct: 2.1, wsMs: 0.15, ePct: 3.8 },
+                  { src: 'Wind Shear', wsPct: 0.2, wsMs: 0.02, ePct: 0.5 },
+                  { src: 'Wind Flow Modeling', wsPct: 4.5, wsMs: 0.32, ePct: 8.3 },
+                ].map((r, i) => (
+                  <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-[#f7fafd]'}>
+                    <td className="px-3 py-0.5 border border-[#dce6f1] pl-6">{r.src}</td>
+                    <td className="px-2 py-0.5 border border-[#dce6f1] text-center font-mono">{r.wsPct.toFixed(1)}</td>
+                    <td className="px-2 py-0.5 border border-[#dce6f1] text-center font-mono">{r.wsMs.toFixed(2)}</td>
+                    <td className="px-2 py-0.5 border border-[#dce6f1] text-center font-mono">{r.ePct.toFixed(1)}</td>
+                    <td className="px-2 py-0.5 border border-[#dce6f1] text-center font-mono">{scaleGWh(r.ePct)}</td>
+                  </tr>
+                ))}
+                <tr className="bg-[#dce6f1] font-bold">
+                  <td className="px-3 py-1 border border-[#9dc3e6]">Total Wind Resource Uncertainty</td>
+                  <td className="px-2 py-1 border border-[#9dc3e6] text-center font-mono">5.4</td>
+                  <td className="px-2 py-1 border border-[#9dc3e6] text-center font-mono">0.39</td>
+                  <td className="px-2 py-1 border border-[#9dc3e6] text-center font-mono">10.1</td>
+                  <td className="px-2 py-1 border border-[#9dc3e6] text-center font-mono">{scaleGWh(10.1)}</td>
+                </tr>
+
+                <tr className="bg-[#f0f4f8]">
+                  <td colSpan={5} className="px-3 py-0.5 font-bold border border-[#dce6f1] text-[#1f3864]">Performance</td>
+                </tr>
+                {[
+                  { src: 'Wind Speed Frequency Distribution', ePct: 1.4 },
+                  { src: 'Total Plant Losses', ePct: 4.1 },
+                ].map((r, i) => (
+                  <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-[#f7fafd]'}>
+                    <td className="px-3 py-0.5 border border-[#dce6f1] pl-6">{r.src}</td>
+                    <td className="px-2 py-0.5 border border-[#dce6f1] text-center">—</td>
+                    <td className="px-2 py-0.5 border border-[#dce6f1] text-center">—</td>
+                    <td className="px-2 py-0.5 border border-[#dce6f1] text-center font-mono">{r.ePct.toFixed(1)}</td>
+                    <td className="px-2 py-0.5 border border-[#dce6f1] text-center font-mono">{scaleGWh(r.ePct)}</td>
+                  </tr>
+                ))}
+                <tr className="bg-[#dce6f1] font-bold">
+                  <td className="px-3 py-1 border border-[#9dc3e6]">Total Energy Uncertainty</td>
+                  <td className="px-2 py-1 border border-[#9dc3e6] text-center">—</td>
+                  <td className="px-2 py-1 border border-[#9dc3e6] text-center">—</td>
+                  <td className="px-2 py-1 border border-[#9dc3e6] text-center font-mono">{fmt1(eyaSettings.totalUncertainty)}</td>
+                  <td className="px-2 py-1 border border-[#9dc3e6] text-center font-mono">{scaleGWh(eyaSettings.totalUncertainty)}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Estimated Energy Production at 5 Confidence Levels */}
+        <div>
+          <div className="bg-[#dce6f1] text-[#1f3864] text-xs px-3 py-1 font-bold border-b border-[#9dc3e6]">
+            Estimated Energy Production and Plant Load Factor at Five Confidence Levels
+            (Evaluation Period [Years 2–25]) and First Year
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs border-collapse min-w-[500px]">
+              <thead>
+                <tr className="bg-[#bdd7ee] text-[#1f3864]">
+                  <th className="px-3 py-2 border border-[#9dc3e6] font-bold w-44">Probability of<br />Exceedance</th>
+                  <th className="px-3 py-2 border border-[#9dc3e6] font-bold text-center">Eval. Period Avg<br />Energy Prod. (GWh)</th>
+                  <th className="px-3 py-2 border border-[#9dc3e6] font-bold text-center">Eval. Period Avg<br />Plant Load Factor (%)</th>
+                  <th className="px-3 py-2 border border-[#9dc3e6] font-bold text-center">First Year<br />Energy Prod. (GWh)</th>
+                  <th className="px-3 py-2 border border-[#9dc3e6] font-bold text-center">First Year<br />Plant Load Factor (%)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[
+                  { label: 'P50', mwh: summary.p50, plf: summary.plf50, fyMwh: summary.p50fy, fyPlf: summary.plfFy50 },
+                  { label: 'P75', mwh: summary.p75, plf: summary.plf75, fyMwh: summary.p75fy, fyPlf: summary.plfFy75 },
+                  { label: 'P90', mwh: summary.p90, plf: summary.plf90, fyMwh: summary.p90fy, fyPlf: summary.plfFy90 },
+                  { label: 'P95', mwh: summary.p95, plf: summary.plf95, fyMwh: summary.p95fy, fyPlf: summary.plfFy95 },
+                  { label: 'P99', mwh: summary.p99, plf: summary.plf99, fyMwh: summary.p99fy, fyPlf: summary.plfFy99 },
+                ].map((row, i) => (
+                  <tr
+                    key={row.label}
+                    className={cn(
+                      'border-b border-[#dce6f1]',
+                      i % 2 === 0 ? 'bg-white' : 'bg-[#f7fafd]',
+                      row.label === 'P50' && 'font-bold bg-[#e2efda]'
+                    )}
+                  >
+                    <td className="px-3 py-1.5 border border-[#dce6f1] text-center font-bold">{row.label}</td>
+                    <td className="px-3 py-1.5 border border-[#dce6f1] text-center font-mono">{fmtGWh(row.mwh)}</td>
+                    <td className="px-3 py-1.5 border border-[#dce6f1] text-center font-mono">{fmt1(row.plf)}</td>
+                    <td className="px-3 py-1.5 border border-[#dce6f1] text-center font-mono">{fmtGWh(row.fyMwh)}</td>
+                    <td className="px-3 py-1.5 border border-[#dce6f1] text-center font-mono">{fmt1(row.fyPlf)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Methodology note */}
+          <div className="px-4 py-3 text-[10px] text-[#4472c4] border-t border-[#dce6f1] bg-[#f7fbff]">
+            <strong>Methodology:</strong> Probability of exceedance values are derived using the standard normal distribution:
+            P<sub>x</sub> = P<sub>50</sub> × (1 − z × σ), where σ = {fmt1(eyaSettings.totalUncertainty)}%
+            total energy uncertainty (1σ) and z is the standard normal deviate for the selected confidence level
+            (P75: 0.674, P90: 1.282, P95: 1.645, P99: 2.326). Wind resource uncertainty is derived from
+            Vortex mesoscale virtual met mast data correlated with long-term reanalysis.
+          </div>
+        </div>
+      </div>
+
     </div>
   );
 }

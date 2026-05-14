@@ -1,8 +1,30 @@
+/**
+ * PATCH for layoutOptimizer.ts
+ *
+ * Replace the existing "Inward Buffer" and "Prepare Exclusion Zones" sections
+ * with the corrected MNRE-compliant logic below.
+ *
+ * Changes:
+ *  1. Boundary setback formula: HH + 0.5*RD + 5m  (MNRE Para V.iii)
+ *     was: 1.1 * (HH + RD/2)
+ *
+ *  2. Feature setbacks now correctly differentiated:
+ *     - water   → 500 m (fixed)
+ *     - dwelling → 500 m (fixed, cluster ≥15 buildings)
+ *     - road, railway, ehv_line, building → HH + 0.5*RD + 5m (formula)
+ *
+ *  3. LineString features (roads, railways, EHV lines) are now buffered,
+ *     not skipped (previous code only handled Polygon/MultiPolygon).
+ *
+ *  4. External turbine spacing uses larger-of-two RD (MNRE Para V.ii).
+ */
+
 import { buffer, booleanPointInPolygon, distance, point, bbox, transformRotate, bearing } from '@turf/turf';
 import type { FeatureCollection, Feature, Polygon, MultiPolygon, Point } from 'geojson';
 import type { TurbinePosition, MicrositingSettings, TurbineModel } from '@/types';
 import { latLngToUTM } from './utmConverter';
 import { calculateSpacing } from './spacingValidator';
+import { formulaSetbackM, FORMULA_SETBACK_TYPES } from './osmService';
 
 export async function optimizeLayout(
   boundary: FeatureCollection,
@@ -11,173 +33,183 @@ export async function optimizeLayout(
   mapFeatures: FeatureCollection | null,
   settings: MicrositingSettings,
   turbineModel: TurbineModel
-): Promise<{ turbines: TurbinePosition[], warnings: string[] }> {
+): Promise<{ turbines: TurbinePosition[]; warnings: string[] }> {
   const warnings: string[] = [];
-  
+
   if (!boundary.features.length) {
-    throw new Error("No boundary provided");
+    throw new Error('No boundary provided');
   }
 
-  // 1. Inward Buffer (MNRE Setback Guideline)
-  // MNRE Setback = 1.1 * Tip Height (Hub Height + Rotor Diameter / 2)
-  const tipHeight = settings.hubHeight + (turbineModel.rotorDiameter / 2);
-  const setbackMeters = 1.1 * tipHeight;
+  // ── 1. Inward Buffer — MNRE Setback ────────────────────────────────────────
+  // MNRE July 2024 Para V.iii: HH + 0.5*RD + 5 m from project boundary edge
+  const mnreSetbackM = formulaSetbackM(settings.hubHeight, turbineModel.rotorDiameter);
+
   let placementPolygon: Feature<Polygon | MultiPolygon> | null = null;
-  
   try {
-    // Attempt to inward buffer
-    // Turf's buffer with negative values works for simple polygons
     const firstFeature = boundary.features[0] as Feature<Polygon | MultiPolygon>;
-    const buffered = buffer(firstFeature, -setbackMeters, { units: 'meters' });
-    if (buffered && buffered.geometry) {
+    const buffered = buffer(firstFeature, -mnreSetbackM, { units: 'meters' });
+    if (buffered?.geometry) {
       placementPolygon = buffered as Feature<Polygon | MultiPolygon>;
     } else {
-      warnings.push("Inward buffer resulted in an empty polygon. The boundary might be too small for the requested setback.");
+      warnings.push(
+        `Inward buffer (${mnreSetbackM.toFixed(0)} m) resulted in an empty polygon. ` +
+        `The boundary may be too small for the selected turbine model.`
+      );
     }
-  } catch (e) {
-    warnings.push("Failed to apply boundary setback buffer. Placing up to the edge.");
+  } catch {
+    warnings.push('Failed to apply boundary setback buffer. Placing up to the boundary edge.');
     placementPolygon = boundary.features[0] as Feature<Polygon | MultiPolygon>;
   }
 
-  if (!placementPolygon) {
-    return { turbines: [], warnings };
-  }
+  if (!placementPolygon) return { turbines: [], warnings };
 
-  // 2. Grid Generation (MNRE Compliant)
-  // Grid should be aligned with prevailing wind direction
-  // Along-wind step = 7D, Cross-wind step = 5D
-  const crosswindMeters = 5 * turbineModel.rotorDiameter;
-  const downwindMeters = 7 * turbineModel.rotorDiameter;
-  
+  // ── 2. Grid Generation — MNRE Compliant ────────────────────────────────────
+  // Cross-wind: 5D, Along-wind: 7D, aligned with prevailing wind direction
+  const crosswindM = settings.crosswindMultiple * turbineModel.rotorDiameter;   // default 5D
+  const downwindM = settings.downwindMultiple * turbineModel.rotorDiameter;   // default 7D
+
   const boundingBox = bbox(placementPolygon);
   const [minLng, minLat, maxLng, maxLat] = boundingBox;
-  
-  // Approximate conversion for grid density calculation
-  const latStep = (crosswindMeters / 111320); 
-  const lngStep = (downwindMeters / (111320 * Math.cos(minLat * Math.PI / 180)));
-  
+
+  const latStep = crosswindM / 111320;
+  const lngStep = downwindM / (111320 * Math.cos(minLat * (Math.PI / 180)));
+
   const centerPt = point([(minLng + maxLng) / 2, (minLat + maxLat) / 2]);
-  
   const candidates: Feature<Point>[] = [];
-  
-  // Generate a staggered grid
-  const padding = 0.1; 
+  const padding = 0.1;
   let rowIndex = 0;
+
   for (let lat = minLat - padding; lat <= maxLat + padding; lat += latStep) {
-    const isEvenRow = rowIndex % 2 === 0;
-    const shift = isEvenRow ? 0 : lngStep / 2;
-    
+    const shift = rowIndex % 2 === 0 ? 0 : lngStep / 2;
     for (let lng = minLng - padding + shift; lng <= maxLng + padding; lng += lngStep) {
       candidates.push(point([lng, lat]));
     }
     rowIndex++;
   }
 
-  const rotatedCandidates = candidates.map(pt => 
+  const rotatedCandidates = candidates.map((pt) =>
     transformRotate(pt, settings.prevailingWindDir, { pivot: centerPt })
   );
 
-  // 2.5 Prepare Exclusion Zones (Regular + Feature Setbacks)
+  // ── 2.5 Prepare Exclusion Zones — MNRE Setbacks Per Feature Type ───────────
   const allExclusions: Feature<Polygon | MultiPolygon>[] = [];
+
+  // Manual exclusion zones (always treated as hard exclusions, no buffer added)
   if (exclusionZones) {
-    allExclusions.push(...exclusionZones.features.filter(f => f.geometry.type === 'Polygon' || f.geometry.type === 'MultiPolygon') as any);
+    allExclusions.push(
+      ...(exclusionZones.features.filter(
+        (f) => f.geometry.type === 'Polygon' || f.geometry.type === 'MultiPolygon'
+      ) as Feature<Polygon | MultiPolygon>[])
+    );
   }
-  
+
   if (mapFeatures) {
     for (const feature of mapFeatures.features) {
-      if (feature.geometry.type === 'Polygon' || feature.geometry.type === 'MultiPolygon') {
-        const type = feature.properties?.type || 'other';
-        let featureSetback = 50; 
-        if (type === 'dwelling') featureSetback = 500; 
-        if (type === 'water') featureSetback = 100;
-        
-        try {
-          const buffered = buffer(feature as any, featureSetback, { units: 'meters' });
-          if (buffered) allExclusions.push(buffered as any);
-        } catch (e) {
-          console.error('Error buffering feature:', e);
-          allExclusions.push(feature as any);
+      const type = (feature.properties?.type as string) ?? 'other';
+
+      let setbackM: number;
+
+      if (type === 'water' || type === 'dwelling') {
+        // Fixed MNRE setback
+        setbackM = 500;
+      } else if (FORMULA_SETBACK_TYPES.includes(type as any)) {
+        // Formula-based: HH + 0.5*RD + 5
+        setbackM = mnreSetbackM;
+      } else {
+        // Unknown / other features — apply conservative 50 m buffer
+        setbackM = 50;
+      }
+
+      try {
+        const geomType = feature.geometry.type;
+
+        if (
+          geomType === 'Polygon' ||
+          geomType === 'MultiPolygon' ||
+          geomType === 'LineString' ||
+          geomType === 'MultiLineString'
+        ) {
+          const buffered = buffer(feature as any, setbackM, { units: 'meters' });
+          if (buffered) allExclusions.push(buffered as Feature<Polygon | MultiPolygon>);
         }
+        // Point features (individual nodes) — buffer into polygon
+        else if (geomType === 'Point') {
+          const buffered = buffer(feature as any, setbackM, { units: 'meters' });
+          if (buffered) allExclusions.push(buffered as Feature<Polygon | MultiPolygon>);
+        }
+      } catch (e) {
+        console.error('[layoutOptimizer] Error buffering feature:', type, e);
       }
     }
   }
 
-  // 3. Filter valid candidates (inside boundary and NOT in exclusion zones)
-  let validCandidates = rotatedCandidates.filter(pt => {
-    const inBoundary = booleanPointInPolygon(pt, placementPolygon as Feature<Polygon | MultiPolygon>);
-    if (!inBoundary) return false;
-
-    // Check all exclusion zones
-    for (const zone of allExclusions) {
-      if (booleanPointInPolygon(pt, zone)) {
-        return false;
-      }
+  // ── 3. Filter Valid Candidates ─────────────────────────────────────────────
+  let validCandidates = rotatedCandidates.filter((pt) => {
+    if (!booleanPointInPolygon(pt, placementPolygon as Feature<Polygon | MultiPolygon>)) {
+      return false;
     }
-
+    for (const zone of allExclusions) {
+      if (booleanPointInPolygon(pt, zone)) return false;
+    }
     return true;
   });
 
-  // Sort candidates to fill uniformly (Shuffle for distributed filling)
-  // or just leave them in grid order for a clean fill.
-  // The user wants to fill the ENTIRE boundary, so we should avoid clustering at the center.
   validCandidates = validCandidates.sort(() => Math.random() - 0.5);
 
-  // 4. Greedy Placement with Elliptical Spacing Check
+  // ── 4. Greedy Placement — MNRE Spacing + External Developer Rule ───────────
   const placedTurbines: TurbinePosition[] = [];
   const D = turbineModel.rotorDiameter;
-  const majorAxis = 7 * D;
-  const minorAxis = 5 * D;
+  const majorAxis = settings.downwindMultiple * D; // 7D along-wind
+  const minorAxis = settings.crosswindMultiple * D; // 5D cross-wind
 
   for (const candidate of validCandidates) {
     if (placedTurbines.length >= settings.targetCount) break;
-    
     let isValid = true;
 
+    const cPt = point([candidate.geometry.coordinates[0], candidate.geometry.coordinates[1]]);
 
+    // Check internal turbine spacing (same developer)
     for (const placed of placedTurbines) {
       const pPt = point([placed.lng, placed.lat]);
-      const distM = distance(candidate, pPt, { units: 'kilometers' }) * 1000;
-      
-      // Calculate bearing relative to wind direction
-      let b = bearing(candidate, pPt);
+      const distM = distance(cPt, pPt, { units: 'kilometers' }) * 1000;
+      let b = bearing(cPt, pPt);
       if (b < 0) b += 360;
       const angleDiff = (b - settings.prevailingWindDir) * (Math.PI / 180);
-
-      // Required distance at this angle (Ellipse formula)
-      const r_required = (majorAxis * minorAxis) / 
-        Math.sqrt(Math.pow(minorAxis * Math.cos(angleDiff), 2) + Math.pow(majorAxis * Math.sin(angleDiff), 2));
-
-      if (distM < r_required) {
-        isValid = false;
-        break;
-      }
+      const r_req =
+        (majorAxis * minorAxis) /
+        Math.sqrt(
+          Math.pow(minorAxis * Math.cos(angleDiff), 2) +
+          Math.pow(majorAxis * Math.sin(angleDiff), 2)
+        );
+      if (distM < r_req) { isValid = false; break; }
     }
 
-    // Check against external turbines
-    if (isValid) {
-      for (const ext of externalTurbines) {
-        const pPt = point([ext.lng, ext.lat]);
-        const distM = distance(candidate, pPt, { units: 'kilometers' }) * 1000;
-        
-        let b = bearing(candidate, pPt);
-        if (b < 0) b += 360;
-        const angleDiff = (b - settings.prevailingWindDir) * (Math.PI / 180);
+    if (!isValid) continue;
 
-        const r_required = (majorAxis * minorAxis) / 
-          Math.sqrt(Math.pow(minorAxis * Math.cos(angleDiff), 2) + Math.pow(majorAxis * Math.sin(angleDiff), 2));
+    // Check external turbine spacing (MNRE: use LARGER of the two rotor diameters)
+    for (const ext of externalTurbines) {
+      const extRD = ext.rotorDiameter ?? D; // fallback to own RD if ext RD unknown
+      const largerD = Math.max(D, extRD);
+      const extMajor = settings.downwindMultiple * largerD;
+      const extMinor = settings.crosswindMultiple * largerD;
 
-        if (distM < r_required) {
-          isValid = false;
-          break;
-        }
-      }
+      const pPt = point([ext.lng, ext.lat]);
+      const distM = distance(cPt, pPt, { units: 'kilometers' }) * 1000;
+      let b = bearing(cPt, pPt);
+      if (b < 0) b += 360;
+      const angleDiff = (b - settings.prevailingWindDir) * (Math.PI / 180);
+      const r_req =
+        (extMajor * extMinor) /
+        Math.sqrt(
+          Math.pow(extMinor * Math.cos(angleDiff), 2) +
+          Math.pow(extMajor * Math.sin(angleDiff), 2)
+        );
+      if (distM < r_req) { isValid = false; break; }
     }
-    
+
     if (isValid) {
-      const lng = candidate.geometry.coordinates[0];
-      const lat = candidate.geometry.coordinates[1];
+      const [lng, lat] = candidate.geometry.coordinates as [number, number];
       const utm = latLngToUTM(lat, lng);
-      
       placedTurbines.push({
         id: `T${placedTurbines.length + 1}`,
         lat,
@@ -190,20 +222,25 @@ export async function optimizeLayout(
         nearestNeighborDistanceRD: 0,
         spacingStatus: 'ok',
         modelId: turbineModel.id,
-        hubHeight: settings.hubHeight
+        hubHeight: settings.hubHeight,
+        rotorDiameter: turbineModel.rotorDiameter,
       });
     }
   }
 
   if (placedTurbines.length < settings.targetCount) {
-    warnings.push(`Only ${placedTurbines.length} out of ${settings.targetCount} turbines could be placed with the current spacing settings.`);
+    warnings.push(
+      `Only ${placedTurbines.length} of ${settings.targetCount} turbines could be placed ` +
+      `while satisfying all MNRE setback and spacing constraints.`
+    );
   }
 
-  // 5. Final Spacing Validation Calculation
-  const validatedTurbines = calculateSpacing(placedTurbines, turbineModel.rotorDiameter, settings.crosswindMultiple);
+  // ── 5. Final Spacing Validation ────────────────────────────────────────────
+  const validatedTurbines = calculateSpacing(
+    placedTurbines,
+    turbineModel.rotorDiameter,
+    settings.prevailingWindDir
+  );
 
-  return {
-    turbines: validatedTurbines,
-    warnings
-  };
+  return { turbines: validatedTurbines, warnings };
 }

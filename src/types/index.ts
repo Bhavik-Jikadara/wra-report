@@ -30,6 +30,7 @@ export interface TurbinePosition {
   spacingStatus: 'ok' | 'warning' | 'violation';
   modelId?: string;
   hubHeight?: number;
+  rotorDiameter?: number;
 }
 
 export interface EYASettings {
