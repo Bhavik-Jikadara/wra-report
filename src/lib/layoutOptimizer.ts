@@ -25,6 +25,7 @@ import type { TurbinePosition, MicrositingSettings, TurbineModel } from '@/types
 import { latLngToUTM } from './utmConverter';
 import { calculateSpacing } from './spacingValidator';
 import { formulaSetbackM, FORMULA_SETBACK_TYPES } from './osmService';
+import { logger } from './logger';
 
 export async function optimizeLayout(
   boundary: FeatureCollection,
@@ -138,7 +139,7 @@ export async function optimizeLayout(
           if (buffered) allExclusions.push(buffered as Feature<Polygon | MultiPolygon>);
         }
       } catch (e) {
-        console.error('[layoutOptimizer] Error buffering feature:', type, e);
+        logger.error('[layoutOptimizer] Error buffering feature:', type, e);
       }
     }
   }

@@ -46,7 +46,10 @@ function interpolateThrust(v: number, thrustCurve: [number, number][]): number {
   return 0;
 }
 
-// Deterministic pseudo-random for per-turbine TI/elevation (avoids Math.random re-renders)
+// Produces indicative placeholder values for TI and base elevation.
+// These are NOT derived from real met-mast or LiDAR data.
+// They are deterministic (same seed → same value) to avoid re-render jitter,
+// but carry no physical meaning. Label them clearly in any exported report.
 function seededValue(seed: number, min: number, max: number): number {
   const x = Math.abs(Math.sin(seed * 127.1 + 311.7) * 43758.5453);
   return min + (x - Math.floor(x)) * (max - min);
@@ -264,6 +267,7 @@ export function calculateEYA(
       totalLoss: +((1 - netAepMwh / grossAepMwhPerTurbine) * 100).toFixed(1),
       rank: 0,
       freeWindSpeed: settings.freeWindSpeed,
+      // INDICATIVE ONLY — replace with site-measured LiDAR / met-mast data
       totalTI: +seededValue(idx + 1, 5.8, 6.5).toFixed(1),
       baseElevation: Math.round(seededValue(idx + 1001, 8, 28)),
       mastAssociation: t.northing >= medianNorthing ? 'Zone North' : 'Zone South',
@@ -292,7 +296,9 @@ export function calculateEYA(
     100 - (settings.machineAvailability * settings.bopAvailability * settings.gridAvailability) / 10000;
   const totalInstalledMW = (turbines.length * model.ratedKW) / 1000;
 
-  // P-values: P_x = P50 × (1 − z × σ)  [lognormal approximation, σ = totalUncertainty/100]
+  // P-values: P_x = P50 × (1 − z × σ)  [normal/linear approximation, σ = totalUncertainty/100]
+  // NOTE: this is a symmetric normal approximation, NOT lognormal.
+  // It is accurate for σ < ~10 %. For higher uncertainties use P50 × exp(−z × ln(1+σ²)^0.5).
   const sigma = settings.totalUncertainty / 100;
   const p50 = totalNet;
   const p75 = p50 * (1 - Z.p75 * sigma);

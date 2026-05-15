@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Sidebar } from '@/components/sidebar/Sidebar';
 import { MapEditor } from '@/components/map/MapEditor';
 import { Header } from '@/components/header/Header';
@@ -6,10 +6,24 @@ import { Toaster } from 'sonner';
 import { Menu } from 'lucide-react';
 
 import { EYAReportPage } from '@/components/report/EYAReportPage';
+import { ProjectHistoryPage } from '@/components/projects/ProjectHistoryPage';
+import { useProjectStore } from '@/store/useProjectStore';
+import { useProjectHistoryStore } from '@/store/useProjectHistoryStore';
+
+export type AppView = 'map' | 'report' | 'projects';
 
 function App() {
-  const [currentView, setCurrentView] = useState<'map' | 'report'>('map');
+  const [currentView, setCurrentView] = useState<AppView>('map');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+
+  // Keep history entry name in sync whenever the user renames the current project
+  const projectId   = useProjectStore(s => s.projectId);
+  const projectName = useProjectStore(s => s.projectName);
+
+  useEffect(() => {
+    if (!projectId) return;
+    useProjectHistoryStore.getState().renameProject(projectId, projectName);
+  }, [projectId, projectName]);
 
   return (
     <div className="flex flex-col min-h-screen lg:h-screen lg:overflow-hidden overflow-y-auto overflow-x-hidden bg-background text-foreground">
@@ -35,9 +49,13 @@ function App() {
             </div>
           </main>
         </div>
-      ) : (
+      ) : currentView === 'report' ? (
         <div className="flex-1 overflow-hidden flex flex-col bg-background">
           <EYAReportPage />
+        </div>
+      ) : (
+        <div className="flex-1 overflow-hidden flex flex-col bg-background">
+          <ProjectHistoryPage onViewChange={setCurrentView} />
         </div>
       )}
       <Toaster position="top-center" />

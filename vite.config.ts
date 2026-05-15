@@ -13,4 +13,18 @@ export default defineConfig({
   define: {
     global: 'globalThis',
   },
+  build: {
+    chunkSizeWarningLimit: 1000,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('maplibre-gl'))       return 'maplibre';
+          if (id.includes('@turf'))             return 'turf';
+          if (id.includes('@react-pdf'))        return 'pdf';
+          if (id.includes('recharts'))          return 'recharts';
+          if (id.includes('@radix-ui'))         return 'radix';
+        },
+      },
+    },
+  },
 })

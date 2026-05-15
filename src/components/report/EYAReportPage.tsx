@@ -1,13 +1,11 @@
-import { useMemo } from 'react';
 import { useProjectStore } from '@/store/useProjectStore';
-import { calculateEYA, generateCurveTable } from '@/lib/eya';
-import turbineModelsData from '@/data/turbineModels.json';
-import type { TurbineModel } from '@/types';
+import { generateCurveTable } from '@/lib/eya';
+import { useEYAResults } from '@/hooks/useEYAResults';
+import { useTurbineModel } from '@/hooks/useTurbineModel';
 import { EYAPowerCurveChart } from '@/components/charts/EYAPowerCurveChart';
+import { EYAWaterfallChart } from '@/components/charts/EYAWaterfallChart';
 import { BarChart3 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-
-const turbineModels = turbineModelsData as unknown as TurbineModel[];
 
 // ── Shared primitive UI ───────────────────────────────────────────────────────
 
@@ -62,24 +60,11 @@ const fmtMWh = (mwh: number) => Math.round(mwh).toLocaleString();
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export function EYAReportPage() {
-  const {
-    turbines, eyaSettings, micrositingSettings,
-    customPowerCurves, projectName,
-  } = useProjectStore();
+  const { turbines, eyaSettings, micrositingSettings, projectName } = useProjectStore();
+  const turbineModel = useTurbineModel();
+  const results = useEYAResults();
 
-  const turbineModel = useMemo(() => {
-    const base = turbineModels.find(m => m.id === micrositingSettings.turbineModelId) ?? turbineModels[0];
-    return customPowerCurves[base.id]
-      ? { ...base, powerCurve: customPowerCurves[base.id] as [number, number][] }
-      : base;
-  }, [micrositingSettings.turbineModelId, customPowerCurves]);
-
-  const results = useMemo(
-    () => calculateEYA(turbines, eyaSettings, turbineModel, micrositingSettings.prevailingWindDir, customPowerCurves),
-    [turbines, eyaSettings, turbineModel, micrositingSettings.prevailingWindDir, customPowerCurves]
-  );
-
-  const curveTable = useMemo(() => generateCurveTable(turbineModel), [turbineModel]);
+  const curveTable = generateCurveTable(turbineModel);
 
   if (turbines.length === 0 || !results) {
     return (
@@ -208,6 +193,47 @@ export function EYAReportPage() {
                     though peak power may be {Math.round(turbineModel.ratedKW * 1.05).toLocaleString()} KW.
                   </td>
                 </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      {/* ═══════════════════════════════════════════════════════════════════════
+          SECTION 1b — AEP Waterfall
+      ════════════════════════════════════════════════════════════════════════ */}
+      <div className="bg-white border border-[#9dc3e6] shadow-sm">
+        <SectionHeader title="AEP Waterfall — Gross to Net" />
+        <div className="flex gap-0">
+          {/* Waterfall chart */}
+          <div className="flex-1 p-4" style={{ height: 320 }}>
+            <EYAWaterfallChart />
+          </div>
+
+          {/* Gross → Net summary table */}
+          <div className="w-52 border-l border-[#9dc3e6] flex flex-col">
+            <div className="bg-[#dce6f1] text-[#1f3864] font-bold text-xs px-3 py-1 border-b border-[#9dc3e6]">
+              Energy Steps
+            </div>
+            <table className="w-full text-xs border-collapse flex-1">
+              <tbody>
+                {[
+                  { label: 'Gross AEP', val: (summary.grossAepMwh / 1000).toFixed(1), unit: 'GWh/yr', bold: true, color: '#1D9E75' },
+                  { label: 'Wake Loss',    val: `-${fmtPct(lb.wakeTotal)}`,             unit: '', bold: false, color: '#ef4444' },
+                  { label: 'Availability',val: `-${fmtPct(lb.availabilityLongTerm)}`,  unit: '', bold: false, color: '#ef4444' },
+                  { label: 'Electrical',  val: `-${fmtPct(lb.electricalTotal)}`,       unit: '', bold: false, color: '#ef4444' },
+                  { label: 'Performance', val: `-${fmtPct(lb.turbinePerformanceTotal)}`,unit:'', bold: false, color: '#ef4444' },
+                  { label: 'Environmental',val:`-${fmtPct(lb.environmentalLongTerm)}`, unit: '', bold: false, color: '#ef4444' },
+                  { label: 'Curtailment', val: `-${fmtPct(lb.curtailmentTotal)}`,      unit: '', bold: false, color: '#ef4444' },
+                  { label: 'Net AEP (P50)', val: (summary.netAepMwh / 1000).toFixed(1), unit: 'GWh/yr', bold: true, color: '#10b981' },
+                ].map(({ label, val, unit, bold, color }, i) => (
+                  <tr key={i} className={cn('border-b border-[#dce6f1]', bold && 'bg-[#f0f7f4] font-bold')}>
+                    <td className="px-2 py-1 text-[10px] text-[#1f3864]">{label}</td>
+                    <td className="px-2 py-1 text-right font-mono text-[10px]" style={{ color }}>
+                      {val}{unit && <span className="text-[#4472c4] font-normal ml-1 text-[9px]">{unit}</span>}
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>

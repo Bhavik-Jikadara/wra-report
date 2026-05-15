@@ -55,6 +55,5 @@ export interface MicrositingSettings {
   hubHeight: number;
   crosswindMultiple: number;
   downwindMultiple: number;
-  boundarySetback: number;
   prevailingWindDir: number;
 }

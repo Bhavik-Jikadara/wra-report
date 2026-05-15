@@ -3,6 +3,31 @@ import { persist } from 'zustand/middleware';
 import type { FeatureCollection } from 'geojson';
 import type { EYASettings, MicrositingSettings, TurbinePosition } from '../types';
 
+export type LayerKey =
+  | 'boundary'
+  | 'turbines'
+  | 'externalTurbines'
+  | 'exclusionZones'
+  | 'water'
+  | 'dwellings'
+  | 'roads'
+  | 'railways'
+  | 'ehvLines'
+  | 'setbackBuffers';
+
+const defaultLayerVisibility: Record<LayerKey, boolean> = {
+  boundary: true,
+  turbines: true,
+  externalTurbines: true,
+  exclusionZones: true,
+  water: true,
+  dwellings: true,
+  roads: true,
+  railways: true,
+  ehvLines: true,
+  setbackBuffers: true,
+};
+
 export interface ProjectState {
   projectId: string | null;
   projectName: string;
@@ -16,6 +41,8 @@ export interface ProjectState {
   externalTurbines: TurbinePosition[];
   mapFeatures: FeatureCollection | null;
 
+  selectedTurbineId: string | null;
+
   setProjectId: (id: string) => void;
   setProjectName: (name: string) => void;
   setProjectBoundary: (boundary: FeatureCollection | null) => void;
@@ -28,6 +55,20 @@ export interface ProjectState {
   setMicrositingSettings: (settings: Partial<MicrositingSettings>) => void;
   setCustomPowerCurve: (modelId: string, curve: [number, number][]) => void;
   clearCustomPowerCurve: (modelId: string) => void;
+  layerVisibility: Record<LayerKey, boolean>;
+  setLayerVisibility: (key: LayerKey, visible: boolean) => void;
+  setSelectedTurbineId: (id: string | null) => void;
+  restoreProject: (snap: {
+    projectId: string; projectName: string;
+    projectBoundary: import('geojson').FeatureCollection | null;
+    exclusionZones: import('geojson').FeatureCollection | null;
+    mapFeatures: import('geojson').FeatureCollection | null;
+    turbines: TurbinePosition[];
+    externalTurbines: TurbinePosition[];
+    eyaSettings: EYASettings;
+    micrositingSettings: MicrositingSettings;
+    customPowerCurves: Record<string, [number, number][]>;
+  }) => void;
   resetProject: () => void;
 }
 
@@ -53,7 +94,6 @@ const defaultMicrositingSettings: MicrositingSettings = {
   hubHeight: 140,
   crosswindMultiple: 5.0,
   downwindMultiple: 7.0,
-  boundarySetback: 1.0,
   prevailingWindDir: 270,
 };
 
@@ -68,6 +108,8 @@ const initialState = {
   eyaSettings: defaultEYASettings,
   micrositingSettings: defaultMicrositingSettings,
   customPowerCurves: {},
+  layerVisibility: defaultLayerVisibility,
+  selectedTurbineId: null,
 };
 
 export const useProjectStore = create<ProjectState>()(
@@ -103,10 +145,40 @@ export const useProjectStore = create<ProjectState>()(
           delete newCurves[modelId];
           return { customPowerCurves: newCurves };
         }),
+      setLayerVisibility: (key, visible) =>
+        set((state) => ({ layerVisibility: { ...state.layerVisibility, [key]: visible } })),
+      setSelectedTurbineId: (id) => set({ selectedTurbineId: id }),
+      restoreProject: (snap) => set({
+        projectId: snap.projectId,
+        projectName: snap.projectName,
+        projectBoundary: snap.projectBoundary,
+        exclusionZones: snap.exclusionZones,
+        mapFeatures: snap.mapFeatures,
+        turbines: snap.turbines,
+        externalTurbines: snap.externalTurbines,
+        eyaSettings: snap.eyaSettings,
+        micrositingSettings: snap.micrositingSettings,
+        customPowerCurves: snap.customPowerCurves,
+        selectedTurbineId: null,
+        layerVisibility: defaultLayerVisibility,
+      }),
       resetProject: () => set(initialState),
     }),
     {
       name: 'wind-farm-storage-v2',
+      partialize: (state) => ({
+        projectId: state.projectId,
+        projectName: state.projectName,
+        projectBoundary: state.projectBoundary,
+        exclusionZones: state.exclusionZones,
+        mapFeatures: state.mapFeatures,
+        turbines: state.turbines,
+        externalTurbines: state.externalTurbines,
+        eyaSettings: state.eyaSettings,
+        micrositingSettings: state.micrositingSettings,
+        customPowerCurves: state.customPowerCurves,
+        layerVisibility: state.layerVisibility,
+      }),
     }
   )
 );

@@ -1,21 +1,9 @@
-import { useMemo } from 'react';
 import { useProjectStore } from '@/store/useProjectStore';
-import { calculateEYA } from '@/lib/eya';
-import turbineModelsData from '@/data/turbineModels.json';
-import type { TurbineModel } from '@/types';
-
-const turbineModels = turbineModelsData as unknown as TurbineModel[];
+import { useEYAResults } from '@/hooks/useEYAResults';
 
 export function EYASummaryCards() {
-  const { turbines, eyaSettings, micrositingSettings, customPowerCurves } = useProjectStore();
-
-  const results = useMemo(() => {
-    let model = turbineModels.find(m => m.id === micrositingSettings.turbineModelId) || turbineModels[0];
-    if (customPowerCurves[model.id]) {
-      model = { ...model, powerCurve: customPowerCurves[model.id] };
-    }
-    return calculateEYA(turbines, eyaSettings, model, micrositingSettings.prevailingWindDir);
-  }, [turbines, eyaSettings, micrositingSettings, customPowerCurves]);
+  const turbines = useProjectStore(s => s.turbines);
+  const results = useEYAResults();
 
   if (turbines.length === 0 || !results) {
     return (

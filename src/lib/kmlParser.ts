@@ -1,6 +1,7 @@
 import { kml } from '@mapbox/togeojson';
 import JSZip from 'jszip';
 import type { FeatureCollection, Feature, Polygon, MultiPolygon } from 'geojson';
+import { logger } from './logger';
 
 export async function parseKmlPointsOrKmz(file: File): Promise<FeatureCollection | null> {
   const extension = file.name.split('.').pop()?.toLowerCase();
@@ -45,7 +46,7 @@ async function parseKmz(file: File, processor: (kmlText: string) => FeatureColle
     const kmlText = await zip.files[kmlFiles[0]].async('text');
     return processor(kmlText);
   } catch (err) {
-    console.error('Error extracting KMZ:', err);
+    logger.error('Error extracting KMZ:', err);
     throw new Error('Failed to extract KMZ file. Ensure it is a valid zip archive containing a KML.');
   }
 }
@@ -63,7 +64,7 @@ export function parseKmlPoints(kmlString: string): FeatureCollection | null {
       features: pointFeatures
     };
   } catch (err) {
-    console.error('Error parsing KML points:', err);
+    logger.error('Error parsing KML points:', err);
     return null;
   }
 }
@@ -74,7 +75,7 @@ export function parseKmlFeatures(kmlString: string): FeatureCollection | null {
     const doc = parser.parseFromString(kmlString, 'text/xml');
     return kml(doc) as FeatureCollection;
   } catch (err) {
-    console.error('Error parsing KML features:', err);
+    logger.error('Error parsing KML features:', err);
     return null;
   }
 }
@@ -107,7 +108,7 @@ function parseKml(kmlString: string): FeatureCollection | null {
       features: boundaryFeatures
     };
   } catch (err) {
-    console.error('Error parsing KML:', err);
+    logger.error('Error parsing KML:', err);
     throw err instanceof Error ? err : new Error('Failed to parse KML geometry.');
   }
 }

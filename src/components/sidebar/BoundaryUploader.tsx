@@ -14,7 +14,14 @@ export function BoundaryUploader() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { setProjectBoundary, projectBoundary, setMapFeatures, mapFeatures } = useProjectStore();
 
+  const ALLOWED_EXTENSIONS = ['kml', 'kmz'];
+
   const processFile = async (file: File) => {
+    const ext = file.name.split('.').pop()?.toLowerCase();
+    if (!ext || !ALLOWED_EXTENSIONS.includes(ext)) {
+      toast.error('Only .kml or .kmz files are allowed');
+      return;
+    }
     if (file.size > 20 * 1024 * 1024) {
       toast.error('File exceeds 20 MB limit');
       return;

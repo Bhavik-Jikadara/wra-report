@@ -1,22 +1,14 @@
 import { useMemo } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { useProjectStore } from '@/store/useProjectStore';
-import { calculateEYA } from '@/lib/eya';
-import turbineModelsData from '@/data/turbineModels.json';
-import type { TurbineModel } from '@/types';
-
-const turbineModels = turbineModelsData as unknown as TurbineModel[];
+import { useEYAResults } from '@/hooks/useEYAResults';
 
 export function EYAWaterfallChart() {
-  const { turbines, eyaSettings, micrositingSettings } = useProjectStore();
+  const turbines = useProjectStore(s => s.turbines);
+  const results = useEYAResults();
 
   const data = useMemo(() => {
-    if (turbines.length === 0) return [];
-
-    const model = turbineModels.find(m => m.id === micrositingSettings.turbineModelId) || turbineModels[0];
-    const results = calculateEYA(turbines, eyaSettings, model, micrositingSettings.prevailingWindDir);
-
-    if (!results) return [];
+    if (turbines.length === 0 || !results) return [];
 
     let currentAEP = results.summary.grossAepMwh / 1000;
     const chartData = [];
@@ -29,14 +21,15 @@ export function EYAWaterfallChart() {
       displayValue: currentAEP.toFixed(1)
     });
 
-    // 2. Sequential Losses
-    // ... (losses calculation)
+    // 2. Sequential Losses — all values sourced from the computed lossBreakdown
+    const lb = results.summary.lossBreakdown;
     const losses = [
-      { name: 'Wake Loss', pct: results.summary.wakeLoss },
-      { name: 'Availability', pct: results.summary.availabilityLoss },
-      { name: 'Electrical', pct: 3.1 }, // Fixed electrical loss from EYA logic
-      { name: 'Performance', pct: 3.0 }, // Fixed performance loss from EYA logic
-      { name: 'Environmental', pct: eyaSettings.environmentalLoss },
+      { name: 'Wake Loss',    pct: lb.wakeTotal },
+      { name: 'Availability', pct: lb.availabilityLongTerm },
+      { name: 'Electrical',   pct: lb.electricalTotal },
+      { name: 'Performance',  pct: lb.turbinePerformanceTotal },
+      { name: 'Environmental',pct: lb.environmentalLongTerm },
+      { name: 'Curtailment',  pct: lb.curtailmentTotal },
     ];
 
     losses.forEach(loss => {
@@ -89,7 +82,7 @@ export function EYAWaterfallChart() {
     });
 
     return waterfallData;
-  }, [turbines, eyaSettings, micrositingSettings]);
+  }, [turbines, results]);
 
   if (turbines.length === 0) {
     return null;

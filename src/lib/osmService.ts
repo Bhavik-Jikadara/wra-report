@@ -68,7 +68,7 @@ function buildOverpassQuery(minLat: number, minLng: number, maxLat: number, maxL
   const pad = 0.02;
   const b = `${minLat - pad},${minLng - pad},${maxLat + pad},${maxLng + pad}`;
 
-  return `[out:json][timeout:90];
+  return `[out:json][timeout:28];
 (
   way["natural"="water"](${b});
   relation["natural"="water"](${b});
@@ -101,7 +101,7 @@ async function fetchOverpass(query: string): Promise<any> {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: `data=${encodeURIComponent(query)}`,
-        signal: AbortSignal.timeout(95_000),
+        signal: AbortSignal.timeout(30_000),
       });
       if (!res.ok) continue;
       const data = await res.json();

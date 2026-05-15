@@ -1,8 +1,11 @@
 import { useState } from 'react';
 import { useProjectStore } from '@/store/useProjectStore';
+import { useProjectHistoryStore } from '@/store/useProjectHistoryStore';
 import { optimizeLayout } from '@/lib/layoutOptimizer';
+import { calculateEYA } from '@/lib/eya';
 import turbineModelsData from '@/data/turbineModels.json';
 import { toast } from 'sonner';
+import { logger } from '@/lib/logger';
 import { Loader2, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import type { TurbineModel } from '@/types';
 import {
@@ -69,6 +72,40 @@ export function GenerateButton({ onGenerated }: GenerateButtonProps) {
       );
 
       setTurbines(turbines);
+
+      // Auto-save to project history
+      try {
+        const s = useProjectStore.getState();
+        let pid = s.projectId;
+        if (!pid) {
+          pid = crypto.randomUUID();
+          s.setProjectId(pid);
+        }
+        const resolvedModel: TurbineModel = s.customPowerCurves[model.id]
+          ? { ...model, powerCurve: s.customPowerCurves[model.id] as [number, number][] }
+          : model;
+        const eya = calculateEYA(turbines, s.eyaSettings, resolvedModel, s.micrositingSettings.prevailingWindDir, s.customPowerCurves);
+        useProjectHistoryStore.getState().upsertProject({
+          id: pid,
+          name: s.projectName,
+          savedAt: new Date().toISOString(),
+          turbineCount: turbines.length,
+          capacityMW: +(turbines.length * model.ratedKW / 1000).toFixed(1),
+          netAepGwh: eya ? +(eya.summary.netAepMwh / 1000).toFixed(2) : null,
+          plfPct: eya ? +eya.summary.plf50.toFixed(1) : null,
+          projectBoundary: s.projectBoundary,
+          exclusionZones: s.exclusionZones,
+          mapFeatures: s.mapFeatures,
+          turbines,
+          externalTurbines: s.externalTurbines,
+          eyaSettings: s.eyaSettings,
+          micrositingSettings: s.micrositingSettings,
+          customPowerCurves: s.customPowerCurves,
+        });
+      } catch (e) {
+        logger.warn('Failed to save project to history', e);
+      }
+
       onGenerated?.();
 
       if (turbines.length < micrositingSettings.targetCount) {
@@ -91,7 +128,7 @@ export function GenerateButton({ onGenerated }: GenerateButtonProps) {
         toast.success(`Done — ${turbines.length} turbines placed`, { id: loadingToast });
       }
     } catch (error) {
-      console.error(error);
+      logger.error(error);
       toast.error(error instanceof Error ? error.message : 'Optimization failed', { id: loadingToast });
     } finally {
       setIsGenerating(false);

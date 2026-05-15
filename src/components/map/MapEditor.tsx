@@ -7,8 +7,10 @@ import { calculateFeatureMeasurements } from '@/lib/measurements';
 import { DrawToolbar } from './DrawToolbar';
 import { MeasurementPanel } from './MeasurementPanel';
 import { RulerPanel } from './RulerPanel';
+import { LayersPanel } from './LayersPanel';
 import type { RulerMode } from './RulerPanel';
 import '@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css';
+import { logger } from '@/lib/logger';
 
 // ── Turbine pin icon helpers ──────────────────────────────────────────────
 const createTurbinePin = (fillColor: string): string => {
@@ -119,7 +121,10 @@ export function MapEditor() {
   const [zoom]     = useState(4);
   const [mapLoaded, setMapLoaded] = useState(false);
 
-  const { projectBoundary, turbines, exclusionZones, externalTurbines, mapFeatures } = useProjectStore();
+  const {
+    projectBoundary, turbines, exclusionZones, externalTurbines, mapFeatures,
+    layerVisibility, selectedTurbineId,
+  } = useProjectStore();
 
   // draw
   const drawRef           = useRef<any>(null);
@@ -143,9 +148,11 @@ export function MapEditor() {
           sources: {
             satellite: {
               type: 'raster',
-              tiles: ['https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}'],
+              // ESRI World Imagery — free for development & evaluation use.
+              // For commercial production, obtain an ArcGIS Online / Esri licence.
+              tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
               tileSize: 256,
-              attribution: 'Google Maps',
+              attribution: 'Tiles &copy; Esri &mdash; Source: Esri, DigitalGlobe, GeoEye, i-cubed, USDA FSA, USGS, AEX, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
             },
           },
           layers: [{ id: 'satellite-layer', type: 'raster', source: 'satellite', minzoom: 0, maxzoom: 22 }],
@@ -188,7 +195,7 @@ export function MapEditor() {
           map.current?.on('draw.modechange', (e: any) => setActiveDrawMode(e.mode));
         });
       });
-    } catch (e) { console.error('Map init failed', e); }
+    } catch (e) { logger.error('Map init failed', e); }
   }, []);
 
   // ── Boundary ─────────────────────────────────────────────────────────────
@@ -396,6 +403,62 @@ export function MapEditor() {
   const handleRulerModeChange = (mode: RulerMode) => { setRulerMode(mode); setRulerPoints([]); };
   const handleRulerClear      = () => setRulerPoints([]);
 
+  // ── Fly to selected turbine ───────────────────────────────────────────────
+  useEffect(() => {
+    if (!map.current || !mapLoaded || !selectedTurbineId) return;
+    const turbine = turbines.find(t => t.id === selectedTurbineId);
+    if (turbine) {
+      map.current.flyTo({ center: [turbine.lng, turbine.lat], zoom: 15, speed: 1.2, essential: true });
+    }
+    useProjectStore.getState().setSelectedTurbineId(null);
+  }, [selectedTurbineId, turbines, mapLoaded]);
+
+  // ── Layer visibility sync → MapLibre ──────────────────────────────────────
+  useEffect(() => {
+    if (!map.current || !mapLoaded) return;
+    const m = map.current;
+    const vis = (on: boolean) => on ? 'visible' : 'none';
+
+    // Boundary
+    if (m.getLayer('project-boundary-fill')) m.setLayoutProperty('project-boundary-fill', 'visibility', vis(layerVisibility.boundary));
+    if (m.getLayer('project-boundary-line')) m.setLayoutProperty('project-boundary-line', 'visibility', vis(layerVisibility.boundary));
+
+    // Turbines
+    if (m.getLayer('turbines-points')) m.setLayoutProperty('turbines-points', 'visibility', vis(layerVisibility.turbines));
+
+    // External turbines
+    if (m.getLayer('external-turbines-points')) m.setLayoutProperty('external-turbines-points', 'visibility', vis(layerVisibility.externalTurbines));
+
+    // Exclusion zones
+    if (m.getLayer('exclusion-zones-fill')) m.setLayoutProperty('exclusion-zones-fill', 'visibility', vis(layerVisibility.exclusionZones));
+    if (m.getLayer('exclusion-zones-line')) m.setLayoutProperty('exclusion-zones-line', 'visibility', vis(layerVisibility.exclusionZones));
+
+    // Map features — filter by which types are toggled on
+    const visibleTypes: string[] = [];
+    if (layerVisibility.water)     visibleTypes.push('water');
+    if (layerVisibility.dwellings) visibleTypes.push('dwelling');
+    if (layerVisibility.roads)     visibleTypes.push('road');
+    if (layerVisibility.railways)  visibleTypes.push('railway');
+    if (layerVisibility.ehvLines)  visibleTypes.push('ehv_line');
+
+    const typeFilter: any = visibleTypes.length > 0
+      ? ['in', ['get', 'type'], ['literal', visibleTypes]]
+      : ['==', ['literal', false], ['literal', true]]; // never match → hides all
+
+    if (m.getLayer('map-features-fill'))
+      m.setFilter('map-features-fill',  ['all', ['==', ['geometry-type'], 'Polygon'], typeFilter]);
+    if (m.getLayer('map-features-line'))
+      m.setFilter('map-features-line',  ['all', ['any', ['==', ['geometry-type'], 'Polygon'], ['==', ['geometry-type'], 'LineString']], typeFilter]);
+    if (m.getLayer('map-features-point'))
+      m.setFilter('map-features-point', ['all', ['==', ['geometry-type'], 'Point'], typeFilter]);
+    if (m.getLayer('map-features-label'))
+      m.setFilter('map-features-label', ['all', ['==', ['geometry-type'], 'Point'], typeFilter]);
+
+    // Setback buffers
+    if (m.getLayer('setback-buffer-fill')) m.setLayoutProperty('setback-buffer-fill', 'visibility', vis(layerVisibility.setbackBuffers));
+    if (m.getLayer('setback-buffer-line')) m.setLayoutProperty('setback-buffer-line', 'visibility', vis(layerVisibility.setbackBuffers));
+  }, [layerVisibility, mapLoaded]);
+
   return (
     <div className="absolute inset-0 w-full h-full bg-slate-900">
       <div ref={mapContainer} className="w-full h-full" />
@@ -429,42 +492,7 @@ export function MapEditor() {
         />
       )}
 
-      <MapLegend />
-    </div>
-  );
-}
-
-// ── Map Legend ────────────────────────────────────────────────────────────────
-function MapLegend() {
-  const { turbines, projectBoundary, mapFeatures } = useProjectStore();
-  const hasFeatures = mapFeatures && mapFeatures.features.length > 0;
-  if (!projectBoundary && turbines.length === 0) return null;
-
-  return (
-    <div className="absolute bottom-4 left-4 z-10 bg-black/70 backdrop-blur-md text-white rounded-lg border border-white/10 shadow-lg px-3 py-2.5 space-y-1.5 text-[10px]">
-      <div className="text-[9px] font-bold uppercase tracking-widest text-white/50 mb-1">Legend</div>
-      {projectBoundary && (
-        <div className="flex items-center gap-2">
-          <span className="w-4 h-2 rounded-sm flex-shrink-0" style={{ background: '#1D9E75', opacity: 0.7 }} />
-          <span className="text-white/80">Project Boundary</span>
-        </div>
-      )}
-      {turbines.length > 0 && (<>
-        <div className="flex items-center gap-2"><span className="w-3 h-4 rounded-b-full flex-shrink-0" style={{ background: '#1D9E75' }} /><span className="text-white/80">Compliant Turbine</span></div>
-        <div className="flex items-center gap-2"><span className="w-3 h-4 rounded-b-full flex-shrink-0" style={{ background: '#BA7517' }} /><span className="text-white/80">Spacing Warning</span></div>
-        <div className="flex items-center gap-2"><span className="w-3 h-4 rounded-b-full flex-shrink-0" style={{ background: '#D85A30' }} /><span className="text-white/80">Spacing Violation</span></div>
-      </>)}
-      <div className="flex items-center gap-2">
-        <span className="w-4 h-2 rounded-sm flex-shrink-0 border border-dashed" style={{ borderColor: '#D85A30', background: 'rgba(216,90,48,0.15)' }} />
-        <span className="text-white/80">Exclusion Zone</span>
-      </div>
-      {hasFeatures && (<>
-        <div className="flex items-center gap-2"><span className="w-4 h-2 rounded-sm flex-shrink-0 border border-dashed" style={{ borderColor: '#ef4444', background: 'rgba(239,68,68,0.1)' }} /><span className="text-white/80">Dwelling Setback (500 m)</span></div>
-        <div className="flex items-center gap-2"><span className="w-4 h-2 rounded-sm flex-shrink-0 border border-dashed" style={{ borderColor: '#3b82f6', background: 'rgba(59,130,246,0.1)' }} /><span className="text-white/80">Water Setback (500 m)</span></div>
-      </>)}
-      {turbines.length > 0 && (
-        <div className="flex items-center gap-2"><span className="w-3 h-4 rounded-b-full flex-shrink-0" style={{ background: '#64748b', opacity: 0.7 }} /><span className="text-white/80">External WTG</span></div>
-      )}
+      <LayersPanel />
     </div>
   );
 }

@@ -5,20 +5,24 @@ import { TurbineConfigPanel } from './TurbineConfigPanel';
 import { GenerateButton } from './GenerateButton';
 import { EYASettingsPanel } from './EYASettingsPanel';
 import { ExternalDataPanel } from './ExternalDataPanel';
+import { TurbineResultsPanel } from './TurbineResultsPanel';
+import { LayoutImporter } from './LayoutImporter';
 import {
   X, ChevronLeft, ChevronRight, Wind,
-  Map, Settings2, BarChart3, Layers, Pencil, Check,
+  Map, Settings2, BarChart3, Layers, Pencil, Check, ListOrdered, FileUp,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useProjectStore } from '@/store/useProjectStore';
 import turbineModelsData from '@/data/turbineModels.json';
+
+type LayoutTab = 'generate' | 'import';
 
 interface SidebarProps {
   isOpen: boolean;
   onToggle: () => void;
 }
 
-// ── Section header (always visible, no collapse) ──────────────────────────────
+// ── Section wrapper ───────────────────────────────────────────────────────────
 
 interface SectionProps {
   step: number;
@@ -33,9 +37,7 @@ interface SectionProps {
 function Section({ step, title, icon, done, optional, badge, children }: SectionProps) {
   return (
     <div className="space-y-2">
-      {/* Section label row */}
       <div className="flex items-center gap-2">
-        {/* Step circle */}
         <div className={cn(
           'w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 border',
           done
@@ -44,8 +46,6 @@ function Section({ step, title, icon, done, optional, badge, children }: Section
         )}>
           {done ? <Check className="w-3 h-3" /> : step}
         </div>
-
-        {/* Icon + title */}
         <span className="flex items-center gap-1.5 flex-1 min-w-0">
           {icon}
           <span className="text-xs font-bold text-foreground truncate">{title}</span>
@@ -55,23 +55,44 @@ function Section({ step, title, icon, done, optional, badge, children }: Section
             </span>
           )}
         </span>
-
-        {/* Badge */}
         {badge}
       </div>
-
-      {/* Content — always visible */}
-      <div className="pl-7">
-        {children}
-      </div>
+      <div className="pl-7">{children}</div>
     </div>
+  );
+}
+
+// ── Tab button ────────────────────────────────────────────────────────────────
+
+function TabBtn({
+  active, icon, label, description, onClick,
+}: {
+  active: boolean; icon: React.ReactNode; label: string; description: string; onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        'flex-1 flex flex-col items-center gap-1 py-2.5 px-2 rounded-lg border-2 transition-all text-center',
+        active
+          ? 'border-primary bg-primary/5 text-primary'
+          : 'border-border bg-muted/30 text-muted-foreground hover:border-primary/40 hover:bg-muted/60 hover:text-foreground'
+      )}
+    >
+      <span className={cn('w-7 h-7 rounded-full flex items-center justify-center', active ? 'bg-primary/10' : 'bg-muted')}>
+        {icon}
+      </span>
+      <span className="text-[11px] font-bold leading-tight">{label}</span>
+      <span className="text-[9px] leading-tight opacity-70">{description}</span>
+    </button>
   );
 }
 
 // ── Sidebar ───────────────────────────────────────────────────────────────────
 
 export function Sidebar({ isOpen, onToggle }: SidebarProps) {
-  const [width, setWidth] = useState(380);
+  const [width,      setWidth]      = useState(380);
+  const [layoutTab,  setLayoutTab]  = useState<LayoutTab>('generate');
   const isResizing = useRef(false);
 
   const {
@@ -81,23 +102,21 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
   } = useProjectStore();
 
   const [editingName, setEditingName] = useState(false);
-  const [nameInput, setNameInput] = useState(projectName);
+  const [nameInput,   setNameInput]   = useState(projectName);
 
-  // Dirty-state: settings changed after turbines were placed
+  // Dirty-state: settings changed after turbines were placed via Generate tab
   const settingsSnapshot = useRef('');
   const [isDirty, setIsDirty] = useState(false);
 
   useEffect(() => {
     const key = JSON.stringify(micrositingSettings);
-    if (turbines.length > 0) {
-      if (settingsSnapshot.current && settingsSnapshot.current !== key) {
-        setIsDirty(true);
-      }
+    if (turbines.length > 0 && layoutTab === 'generate') {
+      if (settingsSnapshot.current && settingsSnapshot.current !== key) setIsDirty(true);
     } else {
       setIsDirty(false);
     }
     settingsSnapshot.current = key;
-  }, [micrositingSettings, turbines.length]);
+  }, [micrositingSettings, turbines.length, layoutTab]);
 
   const handleGenerated = () => {
     settingsSnapshot.current = JSON.stringify(micrositingSettings);
@@ -192,7 +211,6 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
         <ScrollArea className="flex-1 min-h-0">
           <div className="p-3 space-y-5">
 
-            {/* Divider helper */}
             <div className="border-t border-border/50" />
 
             {/* 1 — Project Boundary */}
@@ -201,6 +219,7 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
               title="Project Boundary"
               icon={<Map className="w-3.5 h-3.5 text-primary shrink-0" />}
               done={!!projectBoundary}
+              optional={layoutTab === 'import'}
               badge={
                 projectBoundary ? (
                   <span className="text-[9px] font-mono bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded shrink-0">
@@ -234,19 +253,55 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
 
             <div className="border-t border-border/50" />
 
-            {/* 3 — Turbine Config */}
-            <Section
-              step={3}
-              title="Turbine Configuration"
-              icon={<Settings2 className="w-3.5 h-3.5 text-primary shrink-0" />}
-              badge={
-                <span className="text-[9px] font-mono bg-primary/10 text-primary px-1.5 py-0.5 rounded shrink-0">
-                  {micrositingSettings.targetCount} WTG
-                </span>
-              }
-            >
-              <TurbineConfigPanel />
-            </Section>
+            {/* 3 — Turbine Layout (tabbed) */}
+            <div className="space-y-2">
+              {/* Section header */}
+              <div className="flex items-center gap-2">
+                <div className={cn(
+                  'w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 border',
+                  turbines.length > 0
+                    ? 'bg-emerald-500 border-emerald-500 text-white'
+                    : 'bg-muted border-border text-muted-foreground'
+                )}>
+                  {turbines.length > 0 ? <Check className="w-3 h-3" /> : 3}
+                </div>
+                <span className="text-xs font-bold text-foreground">Turbine Layout</span>
+                {turbines.length > 0 && (
+                  <span className="text-[9px] font-mono bg-primary/10 text-primary px-1.5 py-0.5 rounded ml-auto shrink-0">
+                    {turbines.length} WTG
+                  </span>
+                )}
+              </div>
+
+              {/* ── Tab selector ── */}
+              <div className="pl-7 space-y-3">
+                <div className="flex gap-2">
+                  <TabBtn
+                    active={layoutTab === 'generate'}
+                    icon={<Settings2 className="w-3.5 h-3.5" />}
+                    label="Auto-Generate"
+                    description="Place turbines from boundary"
+                    onClick={() => setLayoutTab('generate')}
+                  />
+                  <TabBtn
+                    active={layoutTab === 'import'}
+                    icon={<FileUp className="w-3.5 h-3.5" />}
+                    label="Import KMZ"
+                    description="Upload your turbine locations"
+                    onClick={() => setLayoutTab('import')}
+                  />
+                </div>
+
+                {/* ── Tab content ── */}
+                <div className="rounded-lg border bg-muted/20 p-3">
+                  {layoutTab === 'generate' ? (
+                    <TurbineConfigPanel />
+                  ) : (
+                    <LayoutImporter />
+                  )}
+                </div>
+              </div>
+            </div>
 
             <div className="border-t border-border/50" />
 
@@ -264,7 +319,26 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
               <EYASettingsPanel />
             </Section>
 
-            {/* Bottom padding so last section isn't flush against footer */}
+            {/* 5 — Turbine Results */}
+            {turbines.length > 0 && (
+              <>
+                <div className="border-t border-border/50" />
+                <Section
+                  step={5}
+                  title="Turbine Results"
+                  icon={<ListOrdered className="w-3.5 h-3.5 text-primary shrink-0" />}
+                  done
+                  badge={
+                    <span className="text-[9px] font-mono bg-primary/10 text-primary px-1.5 py-0.5 rounded shrink-0">
+                      {turbines.length} WTG
+                    </span>
+                  }
+                >
+                  <TurbineResultsPanel />
+                </Section>
+              </>
+            )}
+
             <div className="h-2" />
           </div>
         </ScrollArea>
@@ -272,13 +346,14 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
         {/* ── Sticky footer ──────────────────────────────────────────── */}
         <div className="border-t bg-card shrink-0">
 
-          {/* Quick stats — only when turbines placed */}
+          {/* Quick stats */}
           {turbines.length > 0 && (
             <div className="px-3 pt-2.5 pb-1 grid grid-cols-3 gap-1.5 text-center">
               {[
-                { label: 'Placed', val: `${turbines.length} WTG` },
+                { label: 'Placed',   val: `${turbines.length} WTG` },
                 { label: 'Capacity', val: `${totalCapacityMW} MW` },
-                { label: 'Target', val: `${micrositingSettings.targetCount} WTG` },
+                { label: layoutTab === 'generate' ? 'Target' : 'Source',
+                  val: layoutTab === 'generate' ? `${micrositingSettings.targetCount} WTG` : 'KMZ' },
               ].map(({ label, val }) => (
                 <div key={label} className="rounded-md bg-muted/60 py-1.5 px-1">
                   <p className="text-[9px] text-muted-foreground">{label}</p>
@@ -288,8 +363,8 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
             </div>
           )}
 
-          {/* Dirty-state banner */}
-          {isDirty && turbines.length > 0 && (
+          {/* Dirty-state banner — only for Generate tab */}
+          {layoutTab === 'generate' && isDirty && turbines.length > 0 && (
             <div className="mx-3 mt-1.5 flex items-center gap-2 rounded-md bg-amber-50 border border-amber-200 px-2.5 py-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0 animate-pulse" />
               <span className="text-[10px] text-amber-700 font-medium leading-tight">
@@ -298,12 +373,35 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
             </div>
           )}
 
-          <div className="p-3 pt-2">
-            <GenerateButton onGenerated={handleGenerated} />
-          </div>
+          {/* Generate button — only for Generate tab */}
+          {layoutTab === 'generate' && (
+            <div className="p-3 pt-2">
+              <GenerateButton onGenerated={handleGenerated} />
+            </div>
+          )}
+
+          {/* Import-tab footer hint */}
+          {layoutTab === 'import' && turbines.length === 0 && (
+            <div className="p-3 pt-2">
+              <div className="w-full py-2 rounded-md border border-dashed border-border text-center text-[11px] text-muted-foreground">
+                Upload a KMZ above to place turbines
+              </div>
+            </div>
+          )}
+
+          {layoutTab === 'import' && turbines.length > 0 && (
+            <div className="px-3 pb-3 pt-2">
+              <div className="flex items-center gap-2 rounded-md bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 px-2.5 py-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+                <span className="text-[10px] text-emerald-700 dark:text-emerald-300 font-medium">
+                  Layout imported — EYA report is ready
+                </span>
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Resize handle (desktop) */}
+        {/* Resize handle */}
         {isOpen && (
           <div
             className="hidden lg:block absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-primary/30 active:bg-primary/50 z-30 transition-colors"

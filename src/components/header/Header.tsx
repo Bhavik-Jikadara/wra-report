@@ -1,22 +1,31 @@
 import { useState, useRef, useEffect } from 'react';
-import { Wind, Download, FileText, ArrowLeft, Plus, Pencil, Check } from 'lucide-react';
+import { Wind, Download, FileText, ArrowLeft, Plus, Pencil, Check, FolderOpen } from 'lucide-react';
 import { useProjectStore } from '@/store/useProjectStore';
+import { useProjectHistoryStore } from '@/store/useProjectHistoryStore';
+import type { AppView } from '@/App';
 import { generateKML, downloadKML } from '@/lib/kmlExporter';
 import turbineModelsData from '@/data/turbineModels.json';
 import { pdf } from '@react-pdf/renderer';
 import { PDFReport } from '@/components/report/PDFReport';
 import { toast } from 'sonner';
 import { area } from '@turf/turf';
+import { logger } from '@/lib/logger';
+import {
+  Dialog, DialogContent, DialogHeader, DialogFooter,
+  DialogTitle, DialogDescription,
+} from '@/components/ui/dialog';
 
 interface HeaderProps {
-  currentView?: 'map' | 'report';
-  onViewChange?: (view: 'map' | 'report') => void;
+  currentView?: AppView;
+  onViewChange?: (view: AppView) => void;
 }
 
 export function Header({ currentView = 'map', onViewChange }: HeaderProps) {
   const { turbines, projectBoundary, micrositingSettings, eyaSettings, resetProject, projectName, setProjectName } = useProjectStore();
+  const projectCount = useProjectHistoryStore(s => s.projects.length);
   const [isEditingName, setIsEditingName] = useState(false);
   const [nameValue, setNameValue] = useState(projectName);
+  const [showNewProjectDialog, setShowNewProjectDialog] = useState(false);
   const nameInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -33,14 +42,13 @@ export function Header({ currentView = 'map', onViewChange }: HeaderProps) {
     setIsEditingName(false);
   };
 
-  const handleNewProject = () => {
-    if (confirm('Are you sure you want to start a new project? All current data will be lost.')) {
-      resetProject();
-      toast.success('Project reset successfully');
-      if (currentView === 'report') {
-        onViewChange?.('map');
-      }
-    }
+  const handleNewProject = () => setShowNewProjectDialog(true);
+
+  const confirmNewProject = () => {
+    resetProject();
+    setShowNewProjectDialog(false);
+    toast.success('Project reset successfully');
+    if (currentView !== 'map') onViewChange?.('map');
   };
 
   const handleExportKML = () => {
@@ -93,12 +101,13 @@ export function Header({ currentView = 'map', onViewChange }: HeaderProps) {
       
       toast.success('PDF Report generated', { id: toastId });
     } catch (e) {
-      console.error(e);
+      logger.error(e);
       toast.error('Failed to generate PDF', { id: toastId });
     }
   };
 
   return (
+    <>
     <header className="h-14 border-b bg-card flex items-center justify-between px-3 md:px-6 flex-shrink-0 z-20 shadow-sm relative">
       <div className="flex items-center gap-2 md:gap-3 min-w-0">
         <div className="bg-primary/20 p-1.5 rounded-md hidden sm:flex flex-shrink-0">
@@ -146,23 +155,41 @@ export function Header({ currentView = 'map', onViewChange }: HeaderProps) {
 
         <div className="w-[1px] h-6 bg-border mx-0.5 hidden sm:block" />
 
+        {/* Projects history button */}
+        <button
+          onClick={() => onViewChange?.(currentView === 'projects' ? 'map' : 'projects')}
+          className={`relative flex items-center gap-2 px-2 md:px-3 py-1.5 text-xs font-medium border rounded-md hover:bg-muted transition-colors ${
+            currentView === 'projects' ? 'text-primary border-primary/20 bg-primary/5' : ''
+          }`}
+          title="Project History"
+        >
+          <FolderOpen className="w-3.5 h-3.5" />
+          <span className="hidden sm:inline">{currentView === 'projects' ? 'Back to Map' : 'Projects'}</span>
+          {projectCount > 0 && currentView !== 'projects' && (
+            <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-primary text-primary-foreground text-[9px] font-bold flex items-center justify-center">
+              {projectCount > 9 ? '9+' : projectCount}
+            </span>
+          )}
+        </button>
+
+        {/* Map / EYA Report toggle */}
         {currentView === 'report' ? (
-          <button 
+          <button
             onClick={() => onViewChange?.('map')}
             className="flex items-center gap-2 px-2 md:px-3 py-1.5 text-xs font-medium border rounded-md hover:bg-muted transition-colors"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Map</span>
           </button>
-        ) : (
-          <button 
+        ) : currentView === 'map' ? (
+          <button
             onClick={() => onViewChange?.('report')}
             className="flex items-center gap-2 px-2 md:px-3 py-1.5 text-xs font-medium border rounded-md hover:bg-muted transition-colors text-primary border-primary/20 bg-primary/5"
           >
             <FileText className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">EYA Report</span>
           </button>
-        )}
+        ) : null}
 
         <button 
           onClick={handleExportKML}
@@ -183,5 +210,32 @@ export function Header({ currentView = 'map', onViewChange }: HeaderProps) {
         </button>
       </div>
     </header>
+
+    <Dialog open={showNewProjectDialog} onOpenChange={setShowNewProjectDialog}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Start new project?</DialogTitle>
+          <DialogDescription>
+            All current data — turbines, boundary, and settings — will be permanently lost.
+            This action cannot be undone.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter className="gap-2 sm:gap-0">
+          <button
+            onClick={() => setShowNewProjectDialog(false)}
+            className="px-4 py-2 text-sm font-medium border rounded-md hover:bg-muted transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={confirmNewProject}
+            className="px-4 py-2 text-sm font-medium rounded-md bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors"
+          >
+            New Project
+          </button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }
