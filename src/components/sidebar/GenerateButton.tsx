@@ -35,7 +35,7 @@ interface GenerateButtonProps {
 }
 
 export function GenerateButton({ onGenerated }: GenerateButtonProps) {
-  const { projectBoundary, micrositingSettings, setTurbines } = useProjectStore();
+  const { projectBoundary, micrositingSettings, setTurbines, setTurbineSource } = useProjectStore();
   const [isGenerating, setIsGenerating] = useState(false);
   const [shortfall, setShortfall] = useState<Shortfall | null>(null);
 
@@ -72,6 +72,7 @@ export function GenerateButton({ onGenerated }: GenerateButtonProps) {
       );
 
       setTurbines(turbines);
+      setTurbineSource('generated');
 
       // Auto-save to project history
       try {

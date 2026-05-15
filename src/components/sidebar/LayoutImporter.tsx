@@ -4,13 +4,10 @@ import {
   X, Loader2, FileUp, Info,
 } from 'lucide-react';
 import { useProjectStore } from '@/store/useProjectStore';
-import { useProjectHistoryStore } from '@/store/useProjectHistoryStore';
 import { importTurbinesFromFile, type ImportResult } from '@/lib/layoutImporter';
-import { calculateEYA } from '@/lib/eya';
 import turbineModelsData from '@/data/turbineModels.json';
 import type { TurbineModel } from '@/types';
 import { toast } from 'sonner';
-import { logger } from '@/lib/logger';
 import { cn } from '@/lib/utils';
 
 const turbineModels = turbineModelsData as unknown as TurbineModel[];
@@ -37,7 +34,7 @@ function ComplianceBadge({ count, type }: { count: number; type: 'ok' | 'warning
 // ── Main component ────────────────────────────────────────────────────────────
 
 export function LayoutImporter() {
-  const setTurbines = useProjectStore(s => s.setTurbines);
+  const { setTurbines, setTurbineSource, setImportEyaApproved } = useProjectStore();
   const [dragging,  setDragging]  = useState(false);
   const [loading,   setLoading]   = useState(false);
   const [result,    setResult]    = useState<ImportResult | null>(null);
@@ -62,48 +59,17 @@ export function LayoutImporter() {
       const imported = await importTurbinesFromFile(file, model, s.micrositingSettings);
 
       setTurbines(imported.turbines);
+      setTurbineSource('imported');
+      setImportEyaApproved(false, null);
       setResult(imported);
 
       // Warn about spacing issues
       imported.warnings.forEach(w => toast.warning(w));
 
       if (imported.warnings.length === 0) {
-        toast.success(`${imported.totalImported} turbines imported — all MNRE-compliant`);
+        toast.success(`${imported.totalImported} turbines imported — configure EYA settings and click Generate`);
       } else {
-        toast.success(`${imported.totalImported} turbines imported`);
-      }
-
-      // Auto-save to project history
-      try {
-        const fresh = useProjectStore.getState();
-        let pid = fresh.projectId;
-        if (!pid) {
-          pid = crypto.randomUUID();
-          fresh.setProjectId(pid);
-        }
-        const resolvedModel: TurbineModel = fresh.customPowerCurves[model.id]
-          ? { ...model, powerCurve: fresh.customPowerCurves[model.id] as [number, number][] }
-          : model;
-        const eya = calculateEYA(imported.turbines, fresh.eyaSettings, resolvedModel, fresh.micrositingSettings.prevailingWindDir, fresh.customPowerCurves);
-        useProjectHistoryStore.getState().upsertProject({
-          id: pid,
-          name: fresh.projectName,
-          savedAt: new Date().toISOString(),
-          turbineCount: imported.turbines.length,
-          capacityMW: +(imported.turbines.length * model.ratedKW / 1000).toFixed(1),
-          netAepGwh: eya ? +(eya.summary.netAepMwh / 1000).toFixed(2) : null,
-          plfPct: eya ? +eya.summary.plf50.toFixed(1) : null,
-          projectBoundary: fresh.projectBoundary,
-          exclusionZones: fresh.exclusionZones,
-          mapFeatures: fresh.mapFeatures,
-          turbines: imported.turbines,
-          externalTurbines: fresh.externalTurbines,
-          eyaSettings: fresh.eyaSettings,
-          micrositingSettings: fresh.micrositingSettings,
-          customPowerCurves: fresh.customPowerCurves,
-        });
-      } catch (e) {
-        logger.warn('Failed to auto-save imported layout to history', e);
+        toast.success(`${imported.totalImported} turbines imported — review warnings then generate EYA`);
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to import turbine layout');

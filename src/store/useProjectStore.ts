@@ -43,6 +43,13 @@ export interface ProjectState {
 
   selectedTurbineId: string | null;
 
+  /** Which tab placed the current turbines — gates EYA report display for imports */
+  turbineSource: 'generated' | 'imported' | null;
+  /** True once user explicitly clicks "Generate EYA Report" on the import tab */
+  importEyaApproved: boolean;
+  /** JSON.stringify of eyaSettings at approval time — used for dirty detection */
+  importEyaSettingsKey: string | null;
+
   setProjectId: (id: string) => void;
   setProjectName: (name: string) => void;
   setProjectBoundary: (boundary: FeatureCollection | null) => void;
@@ -58,6 +65,8 @@ export interface ProjectState {
   layerVisibility: Record<LayerKey, boolean>;
   setLayerVisibility: (key: LayerKey, visible: boolean) => void;
   setSelectedTurbineId: (id: string | null) => void;
+  setTurbineSource: (source: 'generated' | 'imported' | null) => void;
+  setImportEyaApproved: (approved: boolean, settingsKey?: string | null) => void;
   restoreProject: (snap: {
     projectId: string; projectName: string;
     projectBoundary: import('geojson').FeatureCollection | null;
@@ -110,6 +119,9 @@ const initialState = {
   customPowerCurves: {},
   layerVisibility: defaultLayerVisibility,
   selectedTurbineId: null,
+  turbineSource: null as 'generated' | 'imported' | null,
+  importEyaApproved: false,
+  importEyaSettingsKey: null as string | null,
 };
 
 export const useProjectStore = create<ProjectState>()(
@@ -148,6 +160,9 @@ export const useProjectStore = create<ProjectState>()(
       setLayerVisibility: (key, visible) =>
         set((state) => ({ layerVisibility: { ...state.layerVisibility, [key]: visible } })),
       setSelectedTurbineId: (id) => set({ selectedTurbineId: id }),
+      setTurbineSource: (source) => set({ turbineSource: source }),
+      setImportEyaApproved: (approved, settingsKey = null) =>
+        set({ importEyaApproved: approved, importEyaSettingsKey: settingsKey }),
       restoreProject: (snap) => set({
         projectId: snap.projectId,
         projectName: snap.projectName,
@@ -161,6 +176,9 @@ export const useProjectStore = create<ProjectState>()(
         customPowerCurves: snap.customPowerCurves,
         selectedTurbineId: null,
         layerVisibility: defaultLayerVisibility,
+        turbineSource: 'generated',
+        importEyaApproved: true,
+        importEyaSettingsKey: null,
       }),
       resetProject: () => set(initialState),
     }),
@@ -178,6 +196,9 @@ export const useProjectStore = create<ProjectState>()(
         micrositingSettings: state.micrositingSettings,
         customPowerCurves: state.customPowerCurves,
         layerVisibility: state.layerVisibility,
+        turbineSource: state.turbineSource,
+        importEyaApproved: state.importEyaApproved,
+        importEyaSettingsKey: state.importEyaSettingsKey,
       }),
     }
   )

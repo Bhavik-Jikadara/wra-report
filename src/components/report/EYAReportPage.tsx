@@ -60,7 +60,7 @@ const fmtMWh = (mwh: number) => Math.round(mwh).toLocaleString();
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export function EYAReportPage() {
-  const { turbines, eyaSettings, micrositingSettings, projectName } = useProjectStore();
+  const { turbines, eyaSettings, micrositingSettings, projectName, turbineSource, importEyaApproved } = useProjectStore();
   const turbineModel = useTurbineModel();
   const results = useEYAResults();
 
@@ -77,6 +77,23 @@ export function EYAReportPage() {
           <p className="text-muted-foreground text-sm max-w-sm">
             Return to the map view, upload a project boundary, configure your turbine settings,
             and click <strong>Generate Micrositing</strong> to create a layout.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (turbineSource === 'imported' && !importEyaApproved) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center h-full p-8 text-center bg-background gap-4">
+        <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center">
+          <BarChart3 className="w-8 h-8 text-muted-foreground" />
+        </div>
+        <div>
+          <h2 className="text-xl font-bold mb-1">EYA Not Generated Yet</h2>
+          <p className="text-muted-foreground text-sm max-w-sm">
+            Turbines have been imported. Adjust your <strong>EYA Parameters</strong> in the sidebar,
+            then click <strong>Generate EYA Report</strong> to compute and view the results.
           </p>
         </div>
       </div>

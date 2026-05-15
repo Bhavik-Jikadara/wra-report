@@ -10,10 +10,16 @@ import { LayoutImporter } from './LayoutImporter';
 import {
   X, ChevronLeft, ChevronRight, Wind,
   Map, Settings2, BarChart3, Layers, Pencil, Check, ListOrdered, FileUp,
+  BarChart2, RefreshCw, Loader2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useProjectStore } from '@/store/useProjectStore';
+import { useProjectHistoryStore } from '@/store/useProjectHistoryStore';
+import { calculateEYA } from '@/lib/eya';
 import turbineModelsData from '@/data/turbineModels.json';
+import type { TurbineModel } from '@/types';
+import { toast } from 'sonner';
+import { logger } from '@/lib/logger';
 
 type LayoutTab = 'generate' | 'import';
 
@@ -93,18 +99,20 @@ function TabBtn({
 export function Sidebar({ isOpen, onToggle }: SidebarProps) {
   const [width,      setWidth]      = useState(380);
   const [layoutTab,  setLayoutTab]  = useState<LayoutTab>('generate');
+  const [importGenerating, setImportGenerating] = useState(false);
   const isResizing = useRef(false);
 
   const {
-    turbines, micrositingSettings, projectBoundary,
+    turbines, micrositingSettings, eyaSettings, projectBoundary,
     externalTurbines, mapFeatures,
     projectName, setProjectName,
+    importEyaApproved, importEyaSettingsKey, setImportEyaApproved,
   } = useProjectStore();
 
   const [editingName, setEditingName] = useState(false);
   const [nameInput,   setNameInput]   = useState(projectName);
 
-  // Dirty-state: settings changed after turbines were placed via Generate tab
+  // Dirty-state: micrositing settings changed after turbines were placed via Generate tab
   const settingsSnapshot = useRef('');
   const [isDirty, setIsDirty] = useState(false);
 
@@ -118,9 +126,66 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
     settingsSnapshot.current = key;
   }, [micrositingSettings, turbines.length, layoutTab]);
 
+  // Dirty-state for Import tab: EYA settings changed after explicit generation
+  const importEyaDirty = importEyaApproved
+    && importEyaSettingsKey !== null
+    && JSON.stringify(eyaSettings) !== importEyaSettingsKey;
+
   const handleGenerated = () => {
     settingsSnapshot.current = JSON.stringify(micrositingSettings);
     setIsDirty(false);
+  };
+
+  const handleImportGenerateEYA = async () => {
+    if (turbines.length === 0) return;
+    setImportGenerating(true);
+    try {
+      const s = useProjectStore.getState();
+      const model = (turbineModelsData as unknown as TurbineModel[]).find(
+        m => m.id === s.micrositingSettings.turbineModelId
+      ) ?? (turbineModelsData[0] as unknown as TurbineModel);
+
+      let pid = s.projectId;
+      if (!pid) {
+        pid = crypto.randomUUID();
+        s.setProjectId(pid);
+      }
+
+      const resolvedModel: TurbineModel = s.customPowerCurves[model.id]
+        ? { ...model, powerCurve: s.customPowerCurves[model.id] as [number, number][] }
+        : model;
+
+      const eya = calculateEYA(
+        s.turbines, s.eyaSettings, resolvedModel,
+        s.micrositingSettings.prevailingWindDir, s.customPowerCurves
+      );
+
+      useProjectHistoryStore.getState().upsertProject({
+        id: pid,
+        name: s.projectName,
+        savedAt: new Date().toISOString(),
+        turbineCount: s.turbines.length,
+        capacityMW: +(s.turbines.length * model.ratedKW / 1000).toFixed(1),
+        netAepGwh: eya ? +(eya.summary.netAepMwh / 1000).toFixed(2) : null,
+        plfPct: eya ? +eya.summary.plf50.toFixed(1) : null,
+        projectBoundary: s.projectBoundary,
+        exclusionZones: s.exclusionZones,
+        mapFeatures: s.mapFeatures,
+        turbines: s.turbines,
+        externalTurbines: s.externalTurbines,
+        eyaSettings: s.eyaSettings,
+        micrositingSettings: s.micrositingSettings,
+        customPowerCurves: s.customPowerCurves,
+      });
+
+      setImportEyaApproved(true, JSON.stringify(s.eyaSettings));
+      toast.success('EYA Report generated — view it in the EYA Report tab');
+    } catch (e) {
+      logger.error(e);
+      toast.error('Failed to generate EYA report');
+    } finally {
+      setImportGenerating(false);
+    }
   };
 
   const selectedModel = (turbineModelsData as any[]).find(
@@ -380,7 +445,7 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
             </div>
           )}
 
-          {/* Import-tab footer hint */}
+          {/* Import-tab footer */}
           {layoutTab === 'import' && turbines.length === 0 && (
             <div className="p-3 pt-2">
               <div className="w-full py-2 rounded-md border border-dashed border-border text-center text-[11px] text-muted-foreground">
@@ -390,13 +455,45 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
           )}
 
           {layoutTab === 'import' && turbines.length > 0 && (
-            <div className="px-3 pb-3 pt-2">
-              <div className="flex items-center gap-2 rounded-md bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 px-2.5 py-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
-                <span className="text-[10px] text-emerald-700 dark:text-emerald-300 font-medium">
-                  Layout imported — EYA report is ready
-                </span>
-              </div>
+            <div className="px-3 pb-3 pt-2 space-y-1.5">
+              {/* Dirty banner — EYA params changed after generation */}
+              {importEyaDirty && (
+                <div className="flex items-center gap-2 rounded-md bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 px-2.5 py-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0 animate-pulse" />
+                  <span className="text-[10px] text-amber-700 dark:text-amber-400 font-medium leading-tight">
+                    EYA parameters changed — regenerate to update report
+                  </span>
+                </div>
+              )}
+
+              {/* Generate / Regenerate button */}
+              {!importEyaApproved || importEyaDirty ? (
+                <button
+                  onClick={handleImportGenerateEYA}
+                  disabled={importGenerating}
+                  className="w-full flex items-center justify-center gap-2 py-2.5 rounded-md bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {importGenerating
+                    ? <Loader2 className="w-4 h-4 animate-spin" />
+                    : importEyaDirty
+                      ? <RefreshCw className="w-4 h-4" />
+                      : <BarChart2 className="w-4 h-4" />
+                  }
+                  {importGenerating
+                    ? 'Generating...'
+                    : importEyaDirty
+                      ? 'Regenerate EYA Report'
+                      : 'Generate EYA Report'
+                  }
+                </button>
+              ) : (
+                <div className="flex items-center gap-2 rounded-md bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 px-2.5 py-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+                  <span className="text-[10px] text-emerald-700 dark:text-emerald-300 font-medium">
+                    EYA report ready — view in EYA Report tab
+                  </span>
+                </div>
+              )}
             </div>
           )}
         </div>
