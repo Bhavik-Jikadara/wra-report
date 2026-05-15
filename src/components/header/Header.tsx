@@ -110,9 +110,20 @@ export function Header({ currentView = 'map', onViewChange }: HeaderProps) {
     <>
     <header className="h-14 border-b bg-card flex items-center justify-between px-3 md:px-6 flex-shrink-0 z-20 shadow-sm relative">
       <div className="flex items-center gap-2 md:gap-3 min-w-0">
-        <div className="bg-primary/20 p-1.5 rounded-md hidden sm:flex flex-shrink-0">
-          <Wind className="w-5 h-5 text-primary" />
+        {/* Platform brand mark */}
+        <div className="hidden sm:flex items-center gap-1.5 shrink-0">
+          <div className="bg-primary/20 p-1.5 rounded-md">
+            <Wind className="w-5 h-5 text-primary" />
+          </div>
+          <div className="hidden md:block">
+            <span className="text-sm font-black text-primary tracking-tight leading-none">WindEYA</span>
+          </div>
         </div>
+
+        {/* Divider */}
+        <div className="hidden md:block w-[1px] h-6 bg-border shrink-0" />
+
+        {/* Project name (editable) */}
         <div className="min-w-0">
           {isEditingName ? (
             <div className="flex items-center gap-1">
@@ -134,7 +145,7 @@ export function Header({ currentView = 'map', onViewChange }: HeaderProps) {
               <Pencil className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
             </div>
           )}
-          <p className="text-[8px] md:text-[10px] text-muted-foreground uppercase tracking-wider font-medium">MNRE & IEC Compliant</p>
+          <p className="text-[8px] md:text-[10px] text-muted-foreground uppercase tracking-wider font-medium">MNRE &amp; IEC Compliant</p>
         </div>
         {turbines.length > 0 && (
           <div className="hidden md:flex items-center gap-1.5 px-2 py-1 bg-primary/10 rounded-full border border-primary/20 flex-shrink-0">

@@ -25,6 +25,11 @@ function App() {
     useProjectHistoryStore.getState().renameProject(projectId, projectName);
   }, [projectId, projectName]);
 
+  // Update browser tab title to reflect current project
+  useEffect(() => {
+    document.title = `${projectName} — WindEYA`;
+  }, [projectName]);
+
   return (
     <div className="flex flex-col min-h-screen lg:h-screen lg:overflow-hidden overflow-y-auto overflow-x-hidden bg-background text-foreground">
       <Header currentView={currentView} onViewChange={setCurrentView} />

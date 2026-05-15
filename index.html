@@ -1,13 +1,63 @@
 <!doctype html>
 <html lang="en" class="dark">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>eya-reports-app</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- ── Favicon ─────────────────────────────────────────────────────────── -->
+  <link rel="icon" type="image/svg+xml" href="/favicon.png" />
+  <link rel="apple-touch-icon" href="/favicon.png" />
+
+  <!-- ── Primary SEO ────────────────────────────────────────────────────── -->
+  <title>WindEYA — Wind Farm Energy Yield Assessment Platform</title>
+  <meta name="description"
+    content="WindEYA is a professional-grade Energy Yield Assessment (EYA) and wind farm micrositing platform. Generate MNRE & IEC 61400-compliant turbine layouts, compute P50/P90 AEP, and export detailed EYA reports — all in your browser." />
+  <meta name="keywords"
+    content="wind farm EYA, energy yield assessment, wind turbine micrositing, MNRE compliance, IEC 61400, wind farm layout, AEP calculation, P50 P90 wind energy, wind farm planning India, wind energy software, turbine spacing, EYA report generator, wind resource assessment, gross AEP net AEP, plant load factor, wind farm design tool" />
+  <meta name="author" content="" />
+  <meta name="robots" content="index, follow" />
+  <meta name="theme-color" content="#10b981" />
+
+  <!-- ── Open Graph (LinkedIn, WhatsApp, Facebook) ──────────────────────── -->
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="WindEYA" />
+  <meta property="og:title" content="WindEYA — Wind Farm Energy Yield Assessment Platform" />
+  <meta property="og:description"
+    content="Professional EYA and micrositing platform for wind farm developers. MNRE & IEC-compliant turbine placement, automated AEP calculation, P50–P99 confidence levels, and one-click EYA reports." />
+  <meta property="og:image" content="/og-image.png" />
+  <meta property="og:locale" content="en_IN" />
+
+  <!-- ── Twitter / X Card ───────────────────────────────────────────────── -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="WindEYA — Wind Farm EYA Platform" />
+  <meta name="twitter:description"
+    content="Browser-based wind farm EYA & micrositing tool. Upload a site boundary, auto-place turbines, validate MNRE spacing, and generate professional EYA reports instantly." />
+  <meta name="twitter:image" content="/og-image.png" />
+
+  <!-- ── Structured Data (JSON-LD) ──────────────────────────────────────── -->
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "WindEYA",
+      "alternateName": "Wind Farm Energy Yield Assessment Platform",
+      "description": "WindEYA is a browser-based professional tool for wind farm Energy Yield Assessment (EYA) and MNRE-compliant turbine micrositing. It supports automated turbine placement, Weibull AEP calculation, P50–P99 uncertainty analysis, and exportable EYA reports.",
+      "applicationCategory": "EngineeringApplication",
+      "operatingSystem": "Web Browser",
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "INR" },
+      "creator": {
+        "@type": "Organization",
+        "name": ""
+      },
+      "keywords": "wind farm EYA, energy yield assessment, turbine micrositing, MNRE, IEC 61400, AEP, P50, wind energy India"
+    }
+    </script>
+</head>
+
+<body>
+  <div id="root"></div>
+  <script type="module" src="/src/main.tsx"></script>
+</body>
+
 </html>
