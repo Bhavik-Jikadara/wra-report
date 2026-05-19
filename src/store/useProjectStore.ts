@@ -3,7 +3,26 @@ import { persist } from 'zustand/middleware';
 import type { FeatureCollection } from 'geojson';
 import type { EYASettings, MicrositingSettings, TurbinePosition } from '../types';
 
-export type LayerKey =
+export type BasemapKey = 'satellite' | 'hybrid' | 'streets' | 'terrain';
+
+export interface PlaceFolder {
+  id: string;
+  name: string;
+  expanded: boolean;
+}
+
+export interface SavedPlace {
+  id: string;
+  name: string;
+  folderId?: string;   // defaults to 'general' when undefined
+  center: [number, number];
+  zoom: number;
+  bearing: number;
+  pitch: number;
+}
+
+// ── Core operational layers ───────────────────────────────────────────────────
+type CoreLayerKey =
   | 'boundary'
   | 'turbines'
   | 'externalTurbines'
@@ -15,7 +34,37 @@ export type LayerKey =
   | 'ehvLines'
   | 'setbackBuffers';
 
+// ── GIS data-dictionary layers (19 new; 'roads' is shared with CoreLayerKey) ─
+type GISLayerKey =
+  // Base Data
+  | 'dtm'
+  | 'landCover'
+  | 'slopeGrid'
+  | 'imageryMosaic'
+  // Infrastructure (roads reuses CoreLayerKey)
+  | 'powerTransmission'
+  | 'gridSubstations'
+  | 'undergroundPipelines'
+  // Administrative
+  | 'districtBoundaries'
+  | 'revenueVillages'
+  | 'protectedAreas'
+  | 'restrictedAirspace'
+  // Environment
+  | 'windResourceGrid'
+  | 'floodZones'
+  | 'wildlifeCorridors'
+  | 'forestCover'
+  // Socioeconomics
+  | 'populationGrid'
+  | 'noiseReceptors'
+  | 'shadowFlickerZones'
+  | 'landParcels';
+
+export type LayerKey = CoreLayerKey | GISLayerKey;
+
 const defaultLayerVisibility: Record<LayerKey, boolean> = {
+  // Core operational (default on)
   boundary: true,
   turbines: true,
   externalTurbines: true,
@@ -26,6 +75,26 @@ const defaultLayerVisibility: Record<LayerKey, boolean> = {
   railways: true,
   ehvLines: true,
   setbackBuffers: true,
+  // GIS data-dictionary layers (default off — no data loaded yet)
+  dtm: false,
+  landCover: false,
+  slopeGrid: false,
+  imageryMosaic: false,
+  powerTransmission: false,
+  gridSubstations: false,
+  undergroundPipelines: false,
+  districtBoundaries: false,
+  revenueVillages: false,
+  protectedAreas: false,
+  restrictedAirspace: false,
+  windResourceGrid: false,
+  floodZones: false,
+  wildlifeCorridors: false,
+  forestCover: false,
+  populationGrid: false,
+  noiseReceptors: false,
+  shadowFlickerZones: false,
+  landParcels: false,
 };
 
 export interface ProjectState {
@@ -50,6 +119,10 @@ export interface ProjectState {
   /** JSON.stringify of eyaSettings at approval time — used for dirty detection */
   importEyaSettingsKey: string | null;
 
+  basemap: BasemapKey;
+  savedPlaces: SavedPlace[];
+  placeFolders: PlaceFolder[];
+
   setProjectId: (id: string) => void;
   setProjectName: (name: string) => void;
   setProjectBoundary: (boundary: FeatureCollection | null) => void;
@@ -67,6 +140,13 @@ export interface ProjectState {
   setSelectedTurbineId: (id: string | null) => void;
   setTurbineSource: (source: 'generated' | 'imported' | null) => void;
   setImportEyaApproved: (approved: boolean, settingsKey?: string | null) => void;
+  setBasemap: (basemap: BasemapKey) => void;
+  addSavedPlace: (place: Omit<SavedPlace, 'id'>) => void;
+  removeSavedPlace: (id: string) => void;
+  addPlaceFolder: (name: string) => void;
+  removePlaceFolder: (id: string) => void;
+  renamePlaceFolder: (id: string, name: string) => void;
+  toggleFolderExpanded: (id: string) => void;
   restoreProject: (snap: {
     projectId: string; projectName: string;
     projectBoundary: import('geojson').FeatureCollection | null;
@@ -122,6 +202,9 @@ const initialState = {
   turbineSource: null as 'generated' | 'imported' | null,
   importEyaApproved: false,
   importEyaSettingsKey: null as string | null,
+  basemap: 'satellite' as BasemapKey,
+  savedPlaces: [] as SavedPlace[],
+  placeFolders: [{ id: 'general', name: 'General', expanded: true }] as PlaceFolder[],
 };
 
 export const useProjectStore = create<ProjectState>()(
@@ -163,6 +246,30 @@ export const useProjectStore = create<ProjectState>()(
       setTurbineSource: (source) => set({ turbineSource: source }),
       setImportEyaApproved: (approved, settingsKey = null) =>
         set({ importEyaApproved: approved, importEyaSettingsKey: settingsKey }),
+      setBasemap: (basemap) => set({ basemap }),
+      addSavedPlace: (place) =>
+        set((state) => ({
+          savedPlaces: [...state.savedPlaces, { ...place, id: crypto.randomUUID() }],
+        })),
+      removeSavedPlace: (id) =>
+        set((state) => ({ savedPlaces: state.savedPlaces.filter((p) => p.id !== id) })),
+      addPlaceFolder: (name) =>
+        set((state) => ({
+          placeFolders: [...state.placeFolders, { id: crypto.randomUUID(), name, expanded: true }],
+        })),
+      removePlaceFolder: (id) =>
+        set((state) => ({
+          placeFolders: state.placeFolders.filter((f) => f.id !== id),
+          savedPlaces:  state.savedPlaces.filter((p) => (p.folderId ?? 'general') !== id),
+        })),
+      renamePlaceFolder: (id, name) =>
+        set((state) => ({
+          placeFolders: state.placeFolders.map((f) => f.id === id ? { ...f, name } : f),
+        })),
+      toggleFolderExpanded: (id) =>
+        set((state) => ({
+          placeFolders: state.placeFolders.map((f) => f.id === id ? { ...f, expanded: !f.expanded } : f),
+        })),
       restoreProject: (snap) => set({
         projectId: snap.projectId,
         projectName: snap.projectName,
@@ -199,6 +306,9 @@ export const useProjectStore = create<ProjectState>()(
         turbineSource: state.turbineSource,
         importEyaApproved: state.importEyaApproved,
         importEyaSettingsKey: state.importEyaSettingsKey,
+        basemap: state.basemap,
+        savedPlaces: state.savedPlaces,
+        placeFolders: state.placeFolders,
       }),
     }
   )

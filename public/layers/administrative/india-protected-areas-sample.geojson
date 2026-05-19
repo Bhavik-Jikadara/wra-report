@@ -1,0 +1,173 @@
+{
+  "type": "FeatureCollection",
+  "name": "India Protected Areas (Sample — simplified extents)",
+  "crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" } },
+  "metadata": {
+    "note": "Simplified bounding-box approximations for development. Replace with WDPA/MoEFCC boundaries in production.",
+    "source": "Sample data — not for legal or survey use",
+    "gisLayerKey": "protectedAreas",
+    "setbackKm": 10
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "pa-001",
+        "pa_name": "Gir National Park & Wildlife Sanctuary",
+        "pa_type": "NP",
+        "authority": "Gujarat Forest Department",
+        "area_km2": 1412.0,
+        "buffer_km": 10.0,
+        "gazette_date": "1965-06-18",
+        "is_ecologically_sensitive": true,
+        "legal_reference": "Wildlife Protection Act 1972, Schedule I"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [70.55, 21.00], [71.25, 21.00], [71.25, 21.55], [70.55, 21.55], [70.55, 21.00]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "pa-002",
+        "pa_name": "Blackbuck National Park, Velavadar",
+        "pa_type": "NP",
+        "authority": "Gujarat Forest Department",
+        "area_km2": 34.08,
+        "buffer_km": 5.0,
+        "gazette_date": "1976-07-24",
+        "is_ecologically_sensitive": true,
+        "legal_reference": "Wildlife Protection Act 1972"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [72.12, 22.00], [72.22, 22.00], [72.22, 22.10], [72.12, 22.10], [72.12, 22.00]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "pa-003",
+        "pa_name": "Ranthambore National Park",
+        "pa_type": "NP",
+        "authority": "Rajasthan Forest Department",
+        "area_km2": 392.0,
+        "buffer_km": 10.0,
+        "gazette_date": "1981-11-01",
+        "is_ecologically_sensitive": true,
+        "legal_reference": "Project Tiger Reserve Notification"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [76.30, 25.90], [76.65, 25.90], [76.65, 26.15], [76.30, 26.15], [76.30, 25.90]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "pa-004",
+        "pa_name": "Desert National Park, Jaisalmer",
+        "pa_type": "NP",
+        "authority": "Rajasthan Forest Department",
+        "area_km2": 3162.0,
+        "buffer_km": 5.0,
+        "gazette_date": "1981-08-08",
+        "is_ecologically_sensitive": false,
+        "legal_reference": "Wildlife Protection Act 1972"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [70.40, 26.80], [71.20, 26.80], [71.20, 27.50], [70.40, 27.50], [70.40, 26.80]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "pa-005",
+        "pa_name": "Kudremukh National Park",
+        "pa_type": "NP",
+        "authority": "Karnataka Forest Department",
+        "area_km2": 600.32,
+        "buffer_km": 10.0,
+        "gazette_date": "1987-07-07",
+        "is_ecologically_sensitive": true,
+        "legal_reference": "Western Ghats Ecologically Sensitive Area"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [75.55, 13.10], [75.85, 13.10], [75.85, 13.50], [75.55, 13.50], [75.55, 13.10]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "pa-006",
+        "pa_name": "Nagarjunasagar-Srisailam Tiger Reserve",
+        "pa_type": "TR",
+        "authority": "Andhra Pradesh / Telangana Forest Dept",
+        "area_km2": 3728.0,
+        "buffer_km": 10.0,
+        "gazette_date": "1978-01-01",
+        "is_ecologically_sensitive": true,
+        "legal_reference": "Project Tiger, Wildlife Protection Act 1972"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [78.80, 16.00], [79.60, 16.00], [79.60, 16.80], [78.80, 16.80], [78.80, 16.00]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "pa-007",
+        "pa_name": "Rollapadu Wildlife Sanctuary",
+        "pa_type": "WLS",
+        "authority": "Andhra Pradesh Forest Department",
+        "area_km2": 6.14,
+        "buffer_km": 5.0,
+        "gazette_date": "1988-10-28",
+        "is_ecologically_sensitive": true,
+        "legal_reference": "Great Indian Bustard habitat — Schedule I"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [78.28, 15.78], [78.36, 15.78], [78.36, 15.85], [78.28, 15.85], [78.28, 15.78]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "pa-008",
+        "pa_name": "Point Calimere Wildlife Sanctuary",
+        "pa_type": "WLS",
+        "authority": "Tamil Nadu Forest Department",
+        "area_km2": 17.26,
+        "buffer_km": 5.0,
+        "gazette_date": "1967-06-17",
+        "is_ecologically_sensitive": false,
+        "legal_reference": "Wildlife Protection Act 1972"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [79.85, 10.27], [79.92, 10.27], [79.92, 10.35], [79.85, 10.35], [79.85, 10.27]
+        ]]
+      }
+    }
+  ]
+}

@@ -1,0 +1,126 @@
+// Prisma schema — Wind Farm GIS Database
+// PostGIS tables for Context B (Production / Enterprise) storage.
+//
+// Geography columns use Unsupported("geography(...)") — Prisma cannot generate
+// typed accessors for PostGIS types; use prisma.$queryRaw for all spatial queries.
+//
+// Run after first clone:
+//   npx prisma migrate dev --name init_gis
+//   npx prisma generate
+
+generator client {
+  provider        = "prisma-client"
+  output          = "../src/generated/prisma"
+  previewFeatures = ["multiSchema"]
+}
+
+datasource db {
+  provider = "postgresql"
+  schemas  = ["public", "layers"]
+}
+
+// ─── Enums ────────────────────────────────────────────────────────────────────
+
+enum ConfidenceLevel {
+  P50
+  P75
+  P90
+
+  @@schema("layers")
+}
+
+enum ZoneType {
+  water
+  dwelling
+  protected_area
+  forest
+  military
+  custom
+
+  @@schema("layers")
+}
+
+// ─── Wind Resource Grid ───────────────────────────────────────────────────────
+// One row per modelled grid cell (typically 1 km² – 25 km² resolution).
+// Turbine placement should only be proposed in cells where mean_wind_speed_ms ≥ 5.0.
+
+model WindResource {
+  id                   String          @id @default(uuid())
+  layerVersion         Int             @default(1)  @map("layer_version")
+
+  /// PostGIS geography column — use ST_AsGeoJSON / ST_Within for queries.
+  geom                 Unsupported("geography(MultiPolygon, 4326)")
+
+  meanWindSpeedMs      Float           @map("mean_wind_speed_ms")
+  windPowerDensityWm2  Float           @map("wind_power_density_wm2")
+  hubHeightM           Float           @map("hub_height_m")
+  measurementYear      Int             @map("measurement_year")
+  dataSource           String          @map("data_source")
+  weibullK             Float           @map("weibull_k")
+  weibullC             Float           @map("weibull_c")
+  confidenceLevel      ConfidenceLevel @map("confidence_level")
+
+  /// Extended fields (weibull params, roughness class, etc.) stored as JSONB.
+  metadata             Json            @default("{}")
+
+  createdAt            DateTime        @default(now()) @map("created_at")
+  updatedAt            DateTime        @updatedAt      @map("updated_at")
+
+  @@map("wind_resource")
+  @@schema("layers")
+}
+
+// ─── Exclusion Zones ──────────────────────────────────────────────────────────
+// Project-scoped polygons that turbines and access roads must avoid.
+// Each zone carries a setback_m buffer — turbines must remain outside
+// ST_Buffer(geom, setback_m).
+
+model ExclusionZone {
+  id         String   @id @default(uuid())
+  projectId  String   @map("project_id")
+
+  geom       Unsupported("geography(MultiPolygon, 4326)")
+
+  zoneName   String   @map("zone_name")
+  zoneType   ZoneType @map("zone_type")
+  setbackM   Float    @default(500) @map("setback_m")
+  legalBasis String?  @map("legal_basis")
+  isActive   Boolean  @default(true) @map("is_active")
+  metadata   Json     @default("{}")
+
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt      @map("updated_at")
+
+  @@index([projectId], name: "exclusion_zones_project_id_idx")
+  @@map("exclusion_zones")
+  @@schema("layers")
+}
+
+// ─── Administrative Boundary ──────────────────────────────────────────────────
+// Self-referential hierarchy: Country (1) → State (2) → District (3) → Tehsil (4).
+// Used for revenue zone attribution, jurisdiction lookups, and report generation.
+
+model AdminBoundary {
+  id         String          @id @default(uuid())
+  geom       Unsupported("geography(MultiPolygon, 4326)")
+
+  name       String
+  /// 1 = country, 2 = state, 3 = district, 4 = tehsil / taluka
+  adminLevel Int             @map("admin_level")
+  code       String?
+  parentId   String?         @map("parent_id")
+  parent     AdminBoundary?  @relation("AdminHierarchy", fields: [parentId], references: [id])
+  children   AdminBoundary[] @relation("AdminHierarchy")
+  areaKm2    Float?          @map("area_km2")
+  country    String          @default("IN")
+  state      String?
+  metadata   Json            @default("{}")
+
+  createdAt  DateTime        @default(now()) @map("created_at")
+  updatedAt  DateTime        @updatedAt      @map("updated_at")
+
+  @@index([adminLevel], name: "admin_boundary_level_idx")
+  @@index([parentId],   name: "admin_boundary_parent_idx")
+  @@map("admin_boundary")
+  @@schema("layers")
+}

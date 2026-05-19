@@ -1,0 +1,35 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": { "name": "Bhavnagar – Dhuvaran 220kV", "voltage_kv": 220, "operator": "PGCIL", "circuit": "double" },
+      "geometry": { "type": "LineString", "coordinates": [[72.15,21.76],[72.40,21.95],[72.65,22.15],[72.90,22.35],[73.05,22.52]] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Amreli – Rajkot 220kV", "voltage_kv": 220, "operator": "GETCO", "circuit": "single" },
+      "geometry": { "type": "LineString", "coordinates": [[71.22,21.60],[71.35,21.90],[71.25,22.15],[71.10,22.25],[70.80,22.30]] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Babra – Lathi – Surendranagar 220kV", "voltage_kv": 220, "operator": "GETCO", "circuit": "single" },
+      "geometry": { "type": "LineString", "coordinates": [[71.35,21.85],[71.38,21.72],[71.45,22.10],[71.50,22.40],[71.65,22.75],[71.80,22.90]] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Mundra – Lakadia 400kV HVDC", "voltage_kv": 400, "operator": "PGCIL", "circuit": "double" },
+      "geometry": { "type": "LineString", "coordinates": [[69.72,22.84],[70.20,22.70],[70.80,22.55],[71.30,22.45],[71.80,22.48],[72.30,22.50]] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Rajkot – Bhavnagar 132kV", "voltage_kv": 132, "operator": "GETCO", "circuit": "single" },
+      "geometry": { "type": "LineString", "coordinates": [[70.80,22.30],[71.10,22.15],[71.35,21.95],[71.65,21.85],[71.95,21.78],[72.15,21.76]] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Mahuva – Bhavnagar 132kV", "voltage_kv": 132, "operator": "GETCO", "circuit": "single" },
+      "geometry": { "type": "LineString", "coordinates": [[71.75,21.08],[71.85,21.30],[72.00,21.55],[72.10,21.70],[72.15,21.76]] }
+    }
+  ]
+}

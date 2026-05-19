@@ -1,0 +1,30 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    { "type": "Feature", "properties": { "name": "Babra",       "type": "town",    "population": 22000 }, "geometry": { "type": "Point", "coordinates": [71.352, 21.847] } },
+    { "type": "Feature", "properties": { "name": "Dhasa",       "type": "town",    "population": 18500 }, "geometry": { "type": "Point", "coordinates": [71.778, 21.755] } },
+    { "type": "Feature", "properties": { "name": "Lathi",       "type": "town",    "population": 12000 }, "geometry": { "type": "Point", "coordinates": [71.388, 21.723] } },
+    { "type": "Feature", "properties": { "name": "Amreli",      "type": "city",    "population": 78000 }, "geometry": { "type": "Point", "coordinates": [71.221, 21.604] } },
+    { "type": "Feature", "properties": { "name": "Rajula",      "type": "town",    "population": 28000 }, "geometry": { "type": "Point", "coordinates": [71.433, 21.033] } },
+    { "type": "Feature", "properties": { "name": "Dhari",       "type": "town",    "population": 19000 }, "geometry": { "type": "Point", "coordinates": [71.012, 21.324] } },
+    { "type": "Feature", "properties": { "name": "Khambha",     "type": "town",    "population": 15000 }, "geometry": { "type": "Point", "coordinates": [72.075, 20.917] } },
+    { "type": "Feature", "properties": { "name": "Savarkundla", "type": "town",    "population": 35000 }, "geometry": { "type": "Point", "coordinates": [71.304, 21.354] } },
+    { "type": "Feature", "properties": { "name": "Jafrabad",    "type": "town",    "population": 24000 }, "geometry": { "type": "Point", "coordinates": [71.367, 20.867] } },
+    { "type": "Feature", "properties": { "name": "Kodinar",     "type": "town",    "population": 21000 }, "geometry": { "type": "Point", "coordinates": [70.700, 20.800] } },
+    { "type": "Feature", "properties": { "name": "Una",         "type": "town",    "population": 29000 }, "geometry": { "type": "Point", "coordinates": [71.025, 20.817] } },
+    { "type": "Feature", "properties": { "name": "Bhavnagar",   "type": "city",    "population": 605000 }, "geometry": { "type": "Point", "coordinates": [72.152, 21.763] } },
+    { "type": "Feature", "properties": { "name": "Talaja",      "type": "town",    "population": 27000 }, "geometry": { "type": "Point", "coordinates": [72.033, 21.350] } },
+    { "type": "Feature", "properties": { "name": "Palitana",    "type": "town",    "population": 57000 }, "geometry": { "type": "Point", "coordinates": [71.817, 21.517] } },
+    { "type": "Feature", "properties": { "name": "Mahuva",      "type": "town",    "population": 36000 }, "geometry": { "type": "Point", "coordinates": [71.750, 21.083] } },
+    { "type": "Feature", "properties": { "name": "Sihor",       "type": "town",    "population": 42000 }, "geometry": { "type": "Point", "coordinates": [71.967, 21.717] } },
+    { "type": "Feature", "properties": { "name": "Gariadhar",   "type": "village", "population": 8500 },  "geometry": { "type": "Point", "coordinates": [71.567, 21.550] } },
+    { "type": "Feature", "properties": { "name": "Vallabhipur", "type": "town",    "population": 18000 }, "geometry": { "type": "Point", "coordinates": [72.283, 21.883] } },
+    { "type": "Feature", "properties": { "name": "Gadhada",     "type": "town",    "population": 23000 }, "geometry": { "type": "Point", "coordinates": [71.567, 21.983] } },
+    { "type": "Feature", "properties": { "name": "Botad",       "type": "city",    "population": 65000 }, "geometry": { "type": "Point", "coordinates": [71.667, 22.167] } },
+    { "type": "Feature", "properties": { "name": "Bagasara",    "type": "town",    "population": 14000 }, "geometry": { "type": "Point", "coordinates": [70.950, 21.483] } },
+    { "type": "Feature", "properties": { "name": "Khirasra",    "type": "village", "population": 6200 },  "geometry": { "type": "Point", "coordinates": [71.583, 22.250] } },
+    { "type": "Feature", "properties": { "name": "Chotila",     "type": "town",    "population": 22000 }, "geometry": { "type": "Point", "coordinates": [71.200, 22.433] } },
+    { "type": "Feature", "properties": { "name": "Morbi",       "type": "city",    "population": 195000 }, "geometry": { "type": "Point", "coordinates": [70.833, 22.817] } },
+    { "type": "Feature", "properties": { "name": "Rajkot",      "type": "city",    "population": 1600000 }, "geometry": { "type": "Point", "coordinates": [70.802, 22.303] } }
+  ]
+}

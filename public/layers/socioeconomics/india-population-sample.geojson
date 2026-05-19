@@ -1,0 +1,17 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    { "type": "Feature", "properties": { "region": "Amreli Rural", "pop_density_km2": 142, "pop_total": 960000 }, "geometry": { "type": "Polygon", "coordinates": [[[71.0,21.0],[71.0,21.5],[71.5,21.5],[71.5,21.0],[71.0,21.0]]] } },
+    { "type": "Feature", "properties": { "region": "Amreli North", "pop_density_km2": 168, "pop_total": 420000 }, "geometry": { "type": "Polygon", "coordinates": [[[71.0,21.5],[71.0,22.0],[71.5,22.0],[71.5,21.5],[71.0,21.5]]] } },
+    { "type": "Feature", "properties": { "region": "Bhavnagar West", "pop_density_km2": 215, "pop_total": 538000 }, "geometry": { "type": "Polygon", "coordinates": [[[71.5,21.0],[71.5,21.5],[72.0,21.5],[72.0,21.0],[71.5,21.0]]] } },
+    { "type": "Feature", "properties": { "region": "Bhavnagar City Zone", "pop_density_km2": 890, "pop_total": 980000 }, "geometry": { "type": "Polygon", "coordinates": [[[71.5,21.5],[71.5,22.0],[72.0,22.0],[72.0,21.5],[71.5,21.5]]] } },
+    { "type": "Feature", "properties": { "region": "Bhavnagar East", "pop_density_km2": 310, "pop_total": 775000 }, "geometry": { "type": "Polygon", "coordinates": [[[72.0,21.0],[72.0,21.5],[72.5,21.5],[72.5,21.0],[72.0,21.0]]] } },
+    { "type": "Feature", "properties": { "region": "Bhavnagar North", "pop_density_km2": 275, "pop_total": 688000 }, "geometry": { "type": "Polygon", "coordinates": [[[72.0,21.5],[72.0,22.0],[72.5,22.0],[72.5,21.5],[72.0,21.5]]] } },
+    { "type": "Feature", "properties": { "region": "Rajkot South", "pop_density_km2": 385, "pop_total": 963000 }, "geometry": { "type": "Polygon", "coordinates": [[[70.5,21.5],[70.5,22.0],[71.0,22.0],[71.0,21.5],[70.5,21.5]]] } },
+    { "type": "Feature", "properties": { "region": "Rajkot City Zone", "pop_density_km2": 1240, "pop_total": 3100000 }, "geometry": { "type": "Polygon", "coordinates": [[[70.5,22.0],[70.5,22.5],[71.0,22.5],[71.0,22.0],[70.5,22.0]]] } },
+    { "type": "Feature", "properties": { "region": "Rajkot North", "pop_density_km2": 192, "pop_total": 480000 }, "geometry": { "type": "Polygon", "coordinates": [[[70.5,22.5],[70.5,23.0],[71.0,23.0],[71.0,22.5],[70.5,22.5]]] } },
+    { "type": "Feature", "properties": { "region": "Surendranagar West", "pop_density_km2": 158, "pop_total": 395000 }, "geometry": { "type": "Polygon", "coordinates": [[[71.0,22.5],[71.0,23.0],[71.5,23.0],[71.5,22.5],[71.0,22.5]]] } },
+    { "type": "Feature", "properties": { "region": "Surendranagar Central", "pop_density_km2": 204, "pop_total": 510000 }, "geometry": { "type": "Polygon", "coordinates": [[[71.5,22.5],[71.5,23.0],[72.0,23.0],[72.0,22.5],[71.5,22.5]]] } },
+    { "type": "Feature", "properties": { "region": "Surendranagar East", "pop_density_km2": 176, "pop_total": 440000 }, "geometry": { "type": "Polygon", "coordinates": [[[72.0,22.5],[72.0,23.0],[72.5,23.0],[72.5,22.5],[72.0,22.5]]] } }
+  ]
+}

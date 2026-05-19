@@ -1,0 +1,20 @@
+{
+  "type": "FeatureCollection",
+  "name": "Default Exclusion Zone Template",
+  "metadata": {
+    "note": "Empty FeatureCollection with the authoritative exclusion zone schema. Draw polygons using the project boundary uploader and populate these properties.",
+    "gisLayerKey": "protectedAreas",
+    "schemaVersion": "1.0",
+    "mandatoryFields": ["zone_name", "zone_type", "setback_m"],
+    "validZoneTypes": ["water", "dwelling", "protected_area", "forest", "military", "custom"],
+    "setbackDefaults": {
+      "water": 500,
+      "dwelling": 500,
+      "protected_area": 10000,
+      "forest": 0,
+      "military": 2000,
+      "custom": 0
+    }
+  },
+  "features": []
+}

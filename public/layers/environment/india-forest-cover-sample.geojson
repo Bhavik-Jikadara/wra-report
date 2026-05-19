@@ -1,0 +1,30 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": { "name": "Girnar Reserved Forest", "type": "Reserved Forest", "density": "Dense", "area_ha": 18000, "authority": "FSI Gujarat" },
+      "geometry": { "type": "Polygon", "coordinates": [[[70.55,21.48],[70.50,21.62],[70.62,21.72],[70.82,21.70],[70.90,21.58],[70.80,21.45],[70.55,21.48]]] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Ratanmahal Reserved Forest", "type": "Reserved Forest", "density": "Moderate", "area_ha": 6500, "authority": "FSI Gujarat" },
+      "geometry": { "type": "Polygon", "coordinates": [[[73.65,22.80],[73.58,22.92],[73.72,23.02],[73.88,22.98],[73.90,22.82],[73.75,22.75],[73.65,22.80]]] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Amreli Scrub Forest Patch", "type": "Scrub Forest", "density": "Open", "area_ha": 1200, "authority": "FSI Gujarat" },
+      "geometry": { "type": "Polygon", "coordinates": [[[71.10,21.70],[71.08,21.78],[71.18,21.82],[71.28,21.78],[71.28,21.68],[71.18,21.65],[71.10,21.70]]] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Palitana Hill Forest", "type": "Protected Forest", "density": "Moderate", "area_ha": 2400, "authority": "FSI Gujarat" },
+      "geometry": { "type": "Polygon", "coordinates": [[[71.78,21.48],[71.75,21.56],[71.82,21.62],[71.92,21.60],[71.95,21.50],[71.88,21.43],[71.78,21.48]]] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Barda Wildlife Sanctuary Forest", "type": "Sanctuary Forest", "density": "Dense", "area_ha": 9100, "authority": "FSI Gujarat" },
+      "geometry": { "type": "Polygon", "coordinates": [[[69.88,21.90],[69.82,22.02],[69.92,22.12],[70.08,22.10],[70.15,21.98],[70.08,21.85],[69.88,21.90]]] }
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": { "district": "Amreli", "state": "Gujarat", "area_sqkm": 6760, "hq": "Amreli" },
+      "geometry": { "type": "Polygon", "coordinates": [[[71.05,21.05],[70.85,21.45],[71.05,21.85],[71.45,22.05],[71.85,21.95],[72.05,21.55],[71.95,21.15],[71.55,20.95],[71.05,21.05]]] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "district": "Bhavnagar", "state": "Gujarat", "area_sqkm": 9963, "hq": "Bhavnagar" },
+      "geometry": { "type": "Polygon", "coordinates": [[[71.65,21.35],[71.45,21.75],[71.65,22.15],[72.15,22.25],[72.55,22.05],[72.55,21.45],[72.05,21.25],[71.65,21.35]]] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "district": "Rajkot", "state": "Gujarat", "area_sqkm": 11203, "hq": "Rajkot" },
+      "geometry": { "type": "Polygon", "coordinates": [[[70.55,21.95],[70.35,22.25],[70.55,22.65],[71.05,22.75],[71.55,22.45],[71.55,21.85],[71.05,21.75],[70.55,21.95]]] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "district": "Surendranagar", "state": "Gujarat", "area_sqkm": 10489, "hq": "Surendranagar" },
+      "geometry": { "type": "Polygon", "coordinates": [[[71.45,22.35],[71.05,22.65],[71.15,23.05],[71.65,23.35],[72.45,23.25],[72.65,22.85],[72.55,22.45],[72.05,22.25],[71.45,22.35]]] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "district": "Junagadh", "state": "Gujarat", "area_sqkm": 8839, "hq": "Junagadh" },
+      "geometry": { "type": "Polygon", "coordinates": [[[70.05,20.85],[69.85,21.05],[69.75,21.45],[70.15,21.75],[70.65,21.85],[71.05,21.65],[71.15,21.05],[70.75,20.75],[70.05,20.85]]] }
+    }
+  ]
+}

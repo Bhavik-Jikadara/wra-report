@@ -27,5 +27,9 @@
       "@/*": ["./src/*"]
     }
   },
-  "include": ["src"]
+  "include": ["src"],
+  "exclude": [
+    "src/lib/db.ts",
+    "src/lib/layerQueries.ts"
+  ]
 }

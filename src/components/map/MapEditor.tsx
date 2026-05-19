@@ -4,13 +4,117 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import { useProjectStore } from '@/store/useProjectStore';
 import { bbox, buffer, distance as turfDistance, circle as turfCircle } from '@turf/turf';
 import { calculateFeatureMeasurements } from '@/lib/measurements';
-import { DrawToolbar } from './DrawToolbar';
+import { MapToolbar }      from './MapToolbar';
 import { MeasurementPanel } from './MeasurementPanel';
-import { RulerPanel } from './RulerPanel';
-import { LayersPanel } from './LayersPanel';
-import type { RulerMode } from './RulerPanel';
+import { RulerPanel }      from './RulerPanel';
+import { MapNavControls }  from './MapNavControls';
+import { MapStatusBar }    from './MapStatusBar';
+import { SidebarPanel }    from './sidebar/SidebarPanel';
+import type { RulerMode }  from './RulerPanel';
+import type { SavedPlace } from '@/store/useProjectStore';
 import '@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css';
 import { logger } from '@/lib/logger';
+
+// ── GIS local-data layer configs ─────────────────────────────────────────────
+interface GISLayerConfig {
+  url: string;
+  geomType: 'polygon' | 'line' | 'point';
+  // polygon fields
+  fillColor?: string | unknown[];
+  lineColor?: string;
+  fillOpacity?: number;
+  // point / circle fields
+  circleColor?: string;
+  circleRadius?: number;
+  circleStroke?: string;
+  // label
+  labelField?: string;
+  labelMinzoom?: number;
+}
+
+const GIS_LOCAL_LAYERS: Partial<Record<string, GISLayerConfig>> = {
+  // ── Administrative ─────────────────────────────────────────────────────
+  protectedAreas: {
+    url: '/layers/administrative/india-protected-areas-sample.geojson',
+    geomType: 'polygon',
+    fillColor: '#7f1d1d', lineColor: '#dc2626', fillOpacity: 0.22,
+    labelField: 'pa_name', labelMinzoom: 7,
+  },
+  districtBoundaries: {
+    url: '/layers/administrative/india-districts-sample.geojson',
+    geomType: 'polygon',
+    fillColor: 'rgba(29,78,216,0.06)', lineColor: '#3b82f6', fillOpacity: 1,
+    labelField: 'district', labelMinzoom: 7,
+  },
+  revenueVillages: {
+    url: '/layers/administrative/india-villages-sample.geojson',
+    geomType: 'point',
+    circleColor: '#f59e0b', circleRadius: 5, circleStroke: '#ffffff',
+    labelField: 'name', labelMinzoom: 9,
+  },
+  restrictedAirspace: {
+    url: '/layers/administrative/india-airspace-sample.geojson',
+    geomType: 'polygon',
+    fillColor: 'rgba(126,34,206,0.15)', lineColor: '#a855f7', fillOpacity: 1,
+    labelField: 'name', labelMinzoom: 8,
+  },
+  // ── Infrastructure ─────────────────────────────────────────────────────
+  powerTransmission: {
+    url: '/layers/infrastructure/india-transmission-sample.geojson',
+    geomType: 'line',
+    lineColor: '#06b6d4',
+    labelField: 'name', labelMinzoom: 8,
+  },
+  gridSubstations: {
+    url: '/layers/infrastructure/india-substations-sample.geojson',
+    geomType: 'point',
+    circleColor: '#fbbf24', circleRadius: 6, circleStroke: '#ffffff',
+    labelField: 'name', labelMinzoom: 9,
+  },
+  // ── Environment ────────────────────────────────────────────────────────
+  windResourceGrid: {
+    url: '/layers/environment/wind-resource-india-sample.geojson',
+    geomType: 'polygon',
+    fillColor: ['interpolate', ['linear'], ['get', 'mean_wind_speed_ms'], 5.0, '#93c5fd', 6.5, '#3b82f6', 8.0, '#f97316', 9.5, '#ef4444'],
+    lineColor: '#06b6d4', fillOpacity: 0.5,
+    labelField: 'region', labelMinzoom: 6,
+  },
+  floodZones: {
+    url: '/layers/environment/india-flood-zones-sample.geojson',
+    geomType: 'polygon',
+    fillColor: '#1e40af', lineColor: '#3b82f6', fillOpacity: 0.28,
+    labelField: 'name', labelMinzoom: 8,
+  },
+  forestCover: {
+    url: '/layers/environment/india-forest-cover-sample.geojson',
+    geomType: 'polygon',
+    fillColor: '#14532d', lineColor: '#16a34a', fillOpacity: 0.45,
+    labelField: 'name', labelMinzoom: 8,
+  },
+  // ── Socioeconomics ─────────────────────────────────────────────────────
+  populationGrid: {
+    url: '/layers/socioeconomics/india-population-sample.geojson',
+    geomType: 'polygon',
+    fillColor: ['interpolate', ['linear'], ['get', 'pop_density_km2'], 100, '#fef9c3', 300, '#fbbf24', 600, '#f97316', 1200, '#dc2626'],
+    lineColor: '#78350f', fillOpacity: 0.55,
+    labelField: 'region', labelMinzoom: 8,
+  },
+  noiseReceptors: {
+    url: '/layers/socioeconomics/india-noise-receptors-sample.geojson',
+    geomType: 'point',
+    circleColor: '#ef4444', circleRadius: 6, circleStroke: '#ffffff',
+    labelField: 'name', labelMinzoom: 10,
+  },
+};
+
+// ── Basemap source tile URLs ──────────────────────────────────────────────────
+// ESRI sources use {z}/{y}/{x}; OSM uses {z}/{x}/{y}
+const TILE_URLS = {
+  satellite:    'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+  terrain:      'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}',
+  streets:      'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+  hybridLabels: 'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
+};
 
 // ── Turbine pin icon helpers ──────────────────────────────────────────────
 const createTurbinePin = (fillColor: string): string => {
@@ -121,10 +225,20 @@ export function MapEditor() {
   const [zoom]     = useState(4);
   const [mapLoaded, setMapLoaded] = useState(false);
 
+  // Google Earth-style HUD state
+  const [mapBearing,    setMapBearing]    = useState(0);
+  const [mapPitch,      setMapPitch]      = useState(0);
+  const [mapZoom,       setMapZoom]       = useState(4);
+  const [cursorCoords,  setCursorCoords]  = useState<[number, number] | null>(null);
+
   const {
     projectBoundary, turbines, exclusionZones, externalTurbines, mapFeatures,
     layerVisibility, selectedTurbineId,
+    basemap, addSavedPlace,
   } = useProjectStore();
+
+  // Tracks which GIS layers have been fetched + added to the map already
+  const gisLoadedRef = useRef<Set<string>>(new Set());
 
   // draw
   const drawRef           = useRef<any>(null);
@@ -137,6 +251,9 @@ export function MapEditor() {
   const [rulerPoints,  setRulerPoints]  = useState<RulerPt[]>([]);
   const [mouseMapPos,  setMouseMapPos]  = useState<RulerPt | null>(null);
 
+  // sidebar
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
+
   // ── Map initialisation ──────────────────────────────────────────────────
   useEffect(() => {
     if (map.current || !mapContainer.current) return;
@@ -145,23 +262,39 @@ export function MapEditor() {
         container: mapContainer.current,
         style: {
           version: 8,
+          // ESRI sources: free for dev/eval. Commercial use requires ArcGIS Online licence.
+          // OSM tiles: © OpenStreetMap contributors, ODbL.
           sources: {
-            satellite: {
-              type: 'raster',
-              // ESRI World Imagery — free for development & evaluation use.
-              // For commercial production, obtain an ArcGIS Online / Esri licence.
-              tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
-              tileSize: 256,
-              attribution: 'Tiles &copy; Esri &mdash; Source: Esri, DigitalGlobe, GeoEye, i-cubed, USDA FSA, USGS, AEX, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
-            },
+            'bm-satellite': { type: 'raster', tiles: [TILE_URLS.satellite],    tileSize: 256, attribution: '© Esri' },
+            'bm-terrain':   { type: 'raster', tiles: [TILE_URLS.terrain],      tileSize: 256, attribution: '© Esri' },
+            'bm-streets':   { type: 'raster', tiles: [TILE_URLS.streets],      tileSize: 256, attribution: '© OpenStreetMap contributors' },
+            'bm-labels':    { type: 'raster', tiles: [TILE_URLS.hybridLabels], tileSize: 256, attribution: '© Esri' },
           },
-          layers: [{ id: 'satellite-layer', type: 'raster', source: 'satellite', minzoom: 0, maxzoom: 22 }],
+          layers: [
+            { id: 'bm-satellite-layer', type: 'raster', source: 'bm-satellite', minzoom: 0, maxzoom: 22 },
+            { id: 'bm-terrain-layer',   type: 'raster', source: 'bm-terrain',   minzoom: 0, maxzoom: 22, layout: { visibility: 'none' } },
+            { id: 'bm-streets-layer',   type: 'raster', source: 'bm-streets',   minzoom: 0, maxzoom: 22, layout: { visibility: 'none' } },
+            { id: 'bm-labels-layer',    type: 'raster', source: 'bm-labels',    minzoom: 0, maxzoom: 22, layout: { visibility: 'none' } },
+          ],
         },
         center: [lng, lat],
         zoom,
       });
 
+      // HUD event listeners — always active
+      map.current.on('rotate',    () => setMapBearing(map.current?.getBearing() ?? 0));
+      map.current.on('pitch',     () => setMapPitch(map.current?.getPitch()     ?? 0));
+      map.current.on('zoom',      () => setMapZoom(map.current?.getZoom()       ?? 4));
+      map.current.on('mousemove', (e) => setCursorCoords([e.lngLat.lng, e.lngLat.lat]));
+      map.current.on('mouseout',  () => setCursorCoords(null));
+
+      // Force resize after the first two animation frames so MapLibre picks up the
+      // actual flex-computed container dimensions (flex layout settles after first paint).
+      requestAnimationFrame(() => requestAnimationFrame(() => map.current?.resize()));
+
       map.current.on('style.load', () => {
+        // Re-measure the container — by the time style.load fires, layout is settled.
+        map.current?.resize();
         if (map.current) loadTurbineIcons(map.current).then(() => setMapLoaded(true));
 
         import('@mapbox/mapbox-gl-draw').then((MapboxDrawModule) => {
@@ -323,6 +456,82 @@ export function MapEditor() {
     }
   }, [mapFeatures, mapLoaded]);
 
+  // ── Basemap switching ─────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!map.current || !mapLoaded) return;
+    const m = map.current;
+    const BASEMAP_VISIBLE: Record<string, string[]> = {
+      satellite: ['bm-satellite-layer'],
+      hybrid:    ['bm-satellite-layer', 'bm-labels-layer'],
+      streets:   ['bm-streets-layer'],
+      terrain:   ['bm-terrain-layer'],
+    };
+    const ALL = ['bm-satellite-layer', 'bm-terrain-layer', 'bm-streets-layer', 'bm-labels-layer'];
+    ALL.forEach(id => { if (m.getLayer(id)) m.setLayoutProperty(id, 'visibility', 'none'); });
+    (BASEMAP_VISIBLE[basemap] ?? BASEMAP_VISIBLE.satellite).forEach(id => {
+      if (m.getLayer(id)) m.setLayoutProperty(id, 'visibility', 'visible');
+    });
+  }, [basemap, mapLoaded]);
+
+  // ── GIS layer lazy loading ────────────────────────────────────────────────
+  useEffect(() => {
+    if (!map.current || !mapLoaded) return;
+    const m = map.current;
+
+    for (const [key, cfg] of Object.entries(GIS_LOCAL_LAYERS)) {
+      if (!cfg) continue;
+      const visible   = (layerVisibility as Record<string, boolean>)[key] ?? false;
+      const sourceId  = `gis-${key}-source`;
+      const primaryId = `gis-${key}-primary`;   // fill | line | circle
+      const lineId    = `gis-${key}-line`;       // outline for polygons only
+      const labelId   = `gis-${key}-label`;
+
+      if (visible && !gisLoadedRef.current.has(key)) {
+        const { url, geomType, fillColor, lineColor, fillOpacity, circleColor, circleRadius, circleStroke, labelField, labelMinzoom } = cfg;
+        fetch(url)
+          .then(r => r.json())
+          .then((data: GeoJSON.FeatureCollection) => {
+            if (!map.current || m.getSource(sourceId)) return;
+            m.addSource(sourceId, { type: 'geojson', data });
+
+            if (geomType === 'polygon') {
+              m.addLayer({ id: primaryId, type: 'fill', source: sourceId, paint: { 'fill-color': (fillColor ?? '#888') as maplibregl.ExpressionSpecification, 'fill-opacity': fillOpacity ?? 0.3 } });
+              m.addLayer({ id: lineId,    type: 'line', source: sourceId, paint: { 'line-color': lineColor ?? '#fff', 'line-width': 1.5 } });
+            } else if (geomType === 'line') {
+              m.addLayer({ id: primaryId, type: 'line', source: sourceId, paint: { 'line-color': lineColor ?? '#06b6d4', 'line-width': 2 } });
+            } else if (geomType === 'point') {
+              m.addLayer({ id: primaryId, type: 'circle', source: sourceId, paint: { 'circle-color': circleColor ?? '#f59e0b', 'circle-radius': circleRadius ?? 5, 'circle-stroke-width': 1.5, 'circle-stroke-color': circleStroke ?? '#fff' } });
+            }
+
+            if (labelField) {
+              m.addLayer({
+                id: labelId, type: 'symbol', source: sourceId,
+                minzoom: labelMinzoom ?? 7,
+                layout: { 'text-field': ['get', labelField] as maplibregl.ExpressionSpecification, 'text-size': 10, 'text-offset': [0, 1.2], 'text-anchor': 'top', 'text-optional': true },
+                paint: { 'text-color': '#ffffff', 'text-halo-color': '#000000', 'text-halo-width': 1 },
+              });
+            }
+            gisLoadedRef.current.add(key);
+          })
+          .catch(e => logger.error(`GIS layer load failed: ${key}`, e));
+
+      } else if (m.getLayer(primaryId)) {
+        const v = visible ? 'visible' : 'none';
+        m.setLayoutProperty(primaryId, 'visibility', v);
+        if (m.getLayer(lineId))  m.setLayoutProperty(lineId,  'visibility', v);
+        if (m.getLayer(labelId)) m.setLayoutProperty(labelId, 'visibility', v);
+      }
+    }
+  }, [layerVisibility, mapLoaded]);
+
+  // ── Container resize observer (handles sidebar collapse / window resize) ──
+  useEffect(() => {
+    if (!mapContainer.current) return;
+    const ro = new ResizeObserver(() => { map.current?.resize(); });
+    ro.observe(mapContainer.current);
+    return () => ro.disconnect();
+  }, []);
+
   // ── Ruler: mouse + click capture ─────────────────────────────────────────
   useEffect(() => {
     if (!map.current || !mapLoaded) return;
@@ -403,6 +612,58 @@ export function MapEditor() {
   const handleRulerModeChange = (mode: RulerMode) => { setRulerMode(mode); setRulerPoints([]); };
   const handleRulerClear      = () => setRulerPoints([]);
 
+  // ── My Places helpers ─────────────────────────────────────────────────────
+  const handleSavePlace = (name: string, folderId: string = 'general') => {
+    if (!map.current) return;
+    const c = map.current.getCenter();
+    addSavedPlace({
+      name, folderId,
+      center:  [c.lng, c.lat],
+      zoom:    map.current.getZoom(),
+      bearing: map.current.getBearing(),
+      pitch:   map.current.getPitch(),
+    });
+  };
+
+  const handleQuickSavePlace = () => {
+    if (!map.current) return;
+    const c = map.current.getCenter();
+    const name = `View ${new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`;
+    addSavedPlace({ name, folderId: 'general', center: [c.lng, c.lat], zoom: map.current.getZoom(), bearing: map.current.getBearing(), pitch: map.current.getPitch() });
+    import('sonner').then(m => m.toast.success(`Saved "${name}" to My Places`));
+  };
+
+  const handleFlyToPlace = (place: SavedPlace) => {
+    if (!map.current) return;
+    map.current.flyTo({ center: place.center, zoom: place.zoom, bearing: place.bearing, pitch: place.pitch, speed: 1.5, essential: true });
+  };
+
+  // ── Nav controls helpers ──────────────────────────────────────────────────
+  const handleFlyToCoords = (lng: number, lat: number, z = 12) => {
+    map.current?.flyTo({ center: [lng, lat], zoom: z, speed: 1.5, essential: true });
+  };
+
+  const handleZoomIn = () => {
+    if (!map.current) return;
+    map.current.zoomIn({ duration: 250 });
+  };
+  const handleZoomOut = () => {
+    if (!map.current) return;
+    map.current.zoomOut({ duration: 250 });
+  };
+  const handleResetNorth = () => {
+    map.current?.easeTo({ bearing: 0, pitch: 0, duration: 400 });
+  };
+  const handleFlyToProject = () => {
+    if (!map.current || !projectBoundary) return;
+    try {
+      map.current.fitBounds(
+        bbox(projectBoundary) as [number, number, number, number],
+        { padding: 60, maxZoom: 16, duration: 800 },
+      );
+    } catch (_) {}
+  };
+
   // ── Fly to selected turbine ───────────────────────────────────────────────
   useEffect(() => {
     if (!map.current || !mapLoaded || !selectedTurbineId) return;
@@ -460,39 +721,80 @@ export function MapEditor() {
   }, [layerVisibility, mapLoaded]);
 
   return (
-    <div className="absolute inset-0 w-full h-full bg-slate-900">
-      <div ref={mapContainer} className="w-full h-full" />
+    <div className="absolute inset-0 flex flex-col bg-[#0d1117]">
 
-      <DrawToolbar
+      {/* ── Google Earth-style top toolbar ── */}
+      <MapToolbar
         activeMode={activeDrawMode}
         onSetMode={handleSetMode}
         isRulerOpen={isRulerOpen}
         rulerMode={rulerMode}
         onOpenRuler={handleOpenRuler}
+        onSavePlace={handleQuickSavePlace}
+        onFlyToProject={handleFlyToProject}
+        sidebarCollapsed={sidebarCollapsed}
+        onToggleSidebar={() => setSidebarCollapsed(c => !c)}
       />
 
-      {isRulerOpen && (
-        <RulerPanel
-          mode={rulerMode}
-          points={rulerPoints}
-          mousePos={mouseMapPos}
-          onModeChange={handleRulerModeChange}
-          onClear={handleRulerClear}
-          onClose={handleRulerClose}
-        />
-      )}
+      {/* ── Main area: sidebar + map ── */}
+      <div className="flex flex-1 min-h-0">
 
-      {selectedFeature && !isRulerOpen && (
-        <MeasurementPanelWrapper
-          feature={selectedFeature}
-          onClear={handleClearDrawing}
-          onSetBoundary={() => handleSetBoundary(selectedFeature)}
-          onSetExclusion={() => handleSetExclusion(selectedFeature)}
-          onSetFeature={(type) => handleSetFeature(selectedFeature, type)}
+        {/* ── Google Earth-style left sidebar ── */}
+        <SidebarPanel
+          collapsed={sidebarCollapsed}
+          onToggle={() => setSidebarCollapsed(c => !c)}
+          onFlyToCoords={handleFlyToCoords}
+          onFlyToPlace={handleFlyToPlace}
+          onSavePlace={handleSavePlace}
         />
-      )}
 
-      <LayersPanel />
+        {/* ── Map area ── */}
+        <div className="flex-1 relative min-w-0 min-h-0">
+          {/* MapLibre canvas */}
+          <div ref={mapContainer} className="w-full h-full" />
+
+          {/* Ruler panel */}
+          {isRulerOpen && (
+            <RulerPanel
+              mode={rulerMode}
+              points={rulerPoints}
+              mousePos={mouseMapPos}
+              onModeChange={handleRulerModeChange}
+              onClear={handleRulerClear}
+              onClose={handleRulerClose}
+            />
+          )}
+
+          {/* Measurement panel */}
+          {selectedFeature && !isRulerOpen && (
+            <MeasurementPanelWrapper
+              feature={selectedFeature}
+              onClear={handleClearDrawing}
+              onSetBoundary={() => handleSetBoundary(selectedFeature)}
+              onSetExclusion={() => handleSetExclusion(selectedFeature)}
+              onSetFeature={(type) => handleSetFeature(selectedFeature, type)}
+            />
+          )}
+
+          {/* Navigation controls — top-right of map */}
+          <MapNavControls
+            bearing={mapBearing}
+            pitch={mapPitch}
+            onZoomIn={handleZoomIn}
+            onZoomOut={handleZoomOut}
+            onResetNorth={handleResetNorth}
+            onFlyToProject={handleFlyToProject}
+          />
+
+          {/* Status bar — bottom of map */}
+          <MapStatusBar
+            cursorCoords={cursorCoords}
+            zoom={mapZoom}
+            bearing={mapBearing}
+            pitch={mapPitch}
+          />
+        </div>
+      </div>
     </div>
   );
 }

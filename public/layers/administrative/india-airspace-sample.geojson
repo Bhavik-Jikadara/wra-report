@@ -1,0 +1,25 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": { "name": "Bhavnagar Airport CTR", "type": "CTR", "ceiling_ft": 1500, "class": "D", "authority": "AAI" },
+      "geometry": { "type": "Polygon", "coordinates": [[[72.11,21.71],[72.11,21.81],[72.21,21.81],[72.26,21.76],[72.21,21.71],[72.11,21.71]]] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Rajkot Airport CTR", "type": "CTR", "ceiling_ft": 1500, "class": "D", "authority": "AAI" },
+      "geometry": { "type": "Polygon", "coordinates": [[[70.72,22.25],[70.72,22.37],[70.84,22.37],[70.84,22.25],[70.72,22.25]]] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "INS Valsura Restricted Area (Jamnagar)", "type": "Restricted", "ceiling_ft": 3000, "class": "R", "authority": "IAF/IN" },
+      "geometry": { "type": "Polygon", "coordinates": [[[69.92,22.39],[69.92,22.55],[70.16,22.55],[70.16,22.39],[69.92,22.39]]] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Surendranagar Airstrip Buffer", "type": "ATZ", "ceiling_ft": 1000, "class": "G", "authority": "State Govt" },
+      "geometry": { "type": "Polygon", "coordinates": [[[71.87,22.70],[71.87,22.80],[72.00,22.80],[72.00,22.70],[71.87,22.70]]] }
+    }
+  ]
+}

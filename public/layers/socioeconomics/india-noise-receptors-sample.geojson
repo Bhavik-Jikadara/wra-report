@@ -1,0 +1,15 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    { "type": "Feature", "properties": { "name": "Babra PHC",           "type": "Hospital",    "sensitivity": "High",   "nearest_wtg_m": 1850 }, "geometry": { "type": "Point", "coordinates": [71.348, 21.850] } },
+    { "type": "Feature", "properties": { "name": "Lathi Primary School","type": "School",      "sensitivity": "High",   "nearest_wtg_m": 2100 }, "geometry": { "type": "Point", "coordinates": [71.385, 21.726] } },
+    { "type": "Feature", "properties": { "name": "Gariadhar Habitation","type": "Residential", "sensitivity": "Medium", "nearest_wtg_m": 950  }, "geometry": { "type": "Point", "coordinates": [71.570, 21.548] } },
+    { "type": "Feature", "properties": { "name": "Dhasa Colony",        "type": "Residential", "sensitivity": "Medium", "nearest_wtg_m": 1200 }, "geometry": { "type": "Point", "coordinates": [71.782, 21.752] } },
+    { "type": "Feature", "properties": { "name": "Khirasra Village",    "type": "Residential", "sensitivity": "Medium", "nearest_wtg_m": 780  }, "geometry": { "type": "Point", "coordinates": [71.580, 22.252] } },
+    { "type": "Feature", "properties": { "name": "Savarkundla Hospital","type": "Hospital",    "sensitivity": "High",   "nearest_wtg_m": 3200 }, "geometry": { "type": "Point", "coordinates": [71.308, 21.358] } },
+    { "type": "Feature", "properties": { "name": "Gadhada Temple",      "type": "Religious",   "sensitivity": "Medium", "nearest_wtg_m": 1650 }, "geometry": { "type": "Point", "coordinates": [71.562, 21.986] } },
+    { "type": "Feature", "properties": { "name": "Botad Residential",   "type": "Residential", "sensitivity": "Low",    "nearest_wtg_m": 4800 }, "geometry": { "type": "Point", "coordinates": [71.670, 22.170] } },
+    { "type": "Feature", "properties": { "name": "Chotila Village",     "type": "Residential", "sensitivity": "Low",    "nearest_wtg_m": 5200 }, "geometry": { "type": "Point", "coordinates": [71.202, 22.435] } },
+    { "type": "Feature", "properties": { "name": "Vallabhipur School",  "type": "School",      "sensitivity": "High",   "nearest_wtg_m": 2900 }, "geometry": { "type": "Point", "coordinates": [72.281, 21.880] } }
+  ]
+}

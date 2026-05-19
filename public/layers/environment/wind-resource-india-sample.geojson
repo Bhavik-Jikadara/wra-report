@@ -1,0 +1,215 @@
+{
+  "type": "FeatureCollection",
+  "name": "India Wind Resource Grid 100m Hub Height (Sample)",
+  "crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" } },
+  "metadata": {
+    "note": "Illustrative 1°×1° grid cells over major Indian wind energy states. Values are indicative only — NOT derived from NIWE atlas.",
+    "source": "Sample data for development",
+    "gisLayerKey": "windResourceGrid",
+    "hubHeightM": 100,
+    "unit": "m/s",
+    "confidenceLevel": "P50"
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "wr-raj-001",
+        "mean_wind_speed_ms": 8.2,
+        "wind_power_density_wm2": 480,
+        "hub_height_m": 100,
+        "measurement_year": 2022,
+        "data_source": "Sample",
+        "weibull_k": 2.4,
+        "weibull_c": 9.2,
+        "confidence_level": "P50",
+        "region": "Rajasthan — Jaisalmer",
+        "metadata": {}
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[70.0, 26.5], [71.0, 26.5], [71.0, 27.5], [70.0, 27.5], [70.0, 26.5]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "wr-raj-002",
+        "mean_wind_speed_ms": 7.6,
+        "wind_power_density_wm2": 385,
+        "hub_height_m": 100,
+        "measurement_year": 2022,
+        "data_source": "Sample",
+        "weibull_k": 2.2,
+        "weibull_c": 8.5,
+        "confidence_level": "P50",
+        "region": "Rajasthan — Barmer",
+        "metadata": {}
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[71.0, 25.5], [72.0, 25.5], [72.0, 26.5], [71.0, 26.5], [71.0, 25.5]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "wr-guj-001",
+        "mean_wind_speed_ms": 7.1,
+        "wind_power_density_wm2": 310,
+        "hub_height_m": 100,
+        "measurement_year": 2022,
+        "data_source": "Sample",
+        "weibull_k": 2.1,
+        "weibull_c": 7.9,
+        "confidence_level": "P50",
+        "region": "Gujarat — Kutch",
+        "metadata": {}
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[69.0, 23.0], [70.0, 23.0], [70.0, 24.0], [69.0, 24.0], [69.0, 23.0]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "wr-guj-002",
+        "mean_wind_speed_ms": 6.5,
+        "wind_power_density_wm2": 245,
+        "hub_height_m": 100,
+        "measurement_year": 2022,
+        "data_source": "Sample",
+        "weibull_k": 2.0,
+        "weibull_c": 7.3,
+        "confidence_level": "P50",
+        "region": "Gujarat — Saurashtra",
+        "metadata": {}
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[70.0, 21.5], [71.0, 21.5], [71.0, 22.5], [70.0, 22.5], [70.0, 21.5]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "wr-mah-001",
+        "mean_wind_speed_ms": 6.2,
+        "wind_power_density_wm2": 215,
+        "hub_height_m": 100,
+        "measurement_year": 2022,
+        "data_source": "Sample",
+        "weibull_k": 2.0,
+        "weibull_c": 6.9,
+        "confidence_level": "P50",
+        "region": "Maharashtra — Dhule / Nandurbar",
+        "metadata": {}
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[74.0, 21.0], [75.0, 21.0], [75.0, 22.0], [74.0, 22.0], [74.0, 21.0]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "wr-kar-001",
+        "mean_wind_speed_ms": 7.4,
+        "wind_power_density_wm2": 355,
+        "hub_height_m": 100,
+        "measurement_year": 2022,
+        "data_source": "Sample",
+        "weibull_k": 2.3,
+        "weibull_c": 8.3,
+        "confidence_level": "P50",
+        "region": "Karnataka — Chitradurga / Tumkur",
+        "metadata": {}
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[76.0, 14.0], [77.0, 14.0], [77.0, 15.0], [76.0, 15.0], [76.0, 14.0]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "wr-tn-001",
+        "mean_wind_speed_ms": 8.8,
+        "wind_power_density_wm2": 560,
+        "hub_height_m": 100,
+        "measurement_year": 2022,
+        "data_source": "Sample",
+        "weibull_k": 2.6,
+        "weibull_c": 9.8,
+        "confidence_level": "P50",
+        "region": "Tamil Nadu — Tirunelveli / Thoothukudi",
+        "metadata": {}
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[77.5, 8.5], [78.5, 8.5], [78.5, 9.5], [77.5, 9.5], [77.5, 8.5]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "wr-ap-001",
+        "mean_wind_speed_ms": 6.9,
+        "wind_power_density_wm2": 285,
+        "hub_height_m": 100,
+        "measurement_year": 2022,
+        "data_source": "Sample",
+        "weibull_k": 2.1,
+        "weibull_c": 7.7,
+        "confidence_level": "P50",
+        "region": "Andhra Pradesh — Kurnool / Kadapa",
+        "metadata": {}
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[78.0, 15.0], [79.0, 15.0], [79.0, 16.0], [78.0, 16.0], [78.0, 15.0]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "wr-mp-001",
+        "mean_wind_speed_ms": 5.8,
+        "wind_power_density_wm2": 180,
+        "hub_height_m": 100,
+        "measurement_year": 2022,
+        "data_source": "Sample",
+        "weibull_k": 1.9,
+        "weibull_c": 6.5,
+        "confidence_level": "P50",
+        "region": "Madhya Pradesh — Neemuch / Ratlam",
+        "metadata": {}
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[74.5, 23.5], [75.5, 23.5], [75.5, 24.5], [74.5, 24.5], [74.5, 23.5]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "wr-ts-001",
+        "mean_wind_speed_ms": 6.0,
+        "wind_power_density_wm2": 198,
+        "hub_height_m": 100,
+        "measurement_year": 2022,
+        "data_source": "Sample",
+        "weibull_k": 2.0,
+        "weibull_c": 6.7,
+        "confidence_level": "P50",
+        "region": "Telangana — Nizamabad / Adilabad",
+        "metadata": {}
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[77.5, 18.5], [78.5, 18.5], [78.5, 19.5], [77.5, 19.5], [77.5, 18.5]]]
+      }
+    }
+  ]
+}

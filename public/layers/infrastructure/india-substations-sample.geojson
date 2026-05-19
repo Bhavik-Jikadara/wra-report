@@ -1,0 +1,13 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    { "type": "Feature", "properties": { "name": "Bhavnagar 220kV SS",     "operator": "GETCO", "voltage_kv": 220, "type": "Switching" }, "geometry": { "type": "Point", "coordinates": [72.15, 21.76] } },
+    { "type": "Feature", "properties": { "name": "Dhuvaran 400kV SS",      "operator": "PGCIL", "voltage_kv": 400, "type": "Regional"  }, "geometry": { "type": "Point", "coordinates": [73.05, 22.52] } },
+    { "type": "Feature", "properties": { "name": "Amreli 220kV SS",        "operator": "GETCO", "voltage_kv": 220, "type": "Switching" }, "geometry": { "type": "Point", "coordinates": [71.22, 21.60] } },
+    { "type": "Feature", "properties": { "name": "Rajkot 220kV SS",        "operator": "GETCO", "voltage_kv": 220, "type": "Switching" }, "geometry": { "type": "Point", "coordinates": [70.80, 22.30] } },
+    { "type": "Feature", "properties": { "name": "Surendranagar 220kV SS", "operator": "GETCO", "voltage_kv": 220, "type": "Switching" }, "geometry": { "type": "Point", "coordinates": [71.65, 22.85] } },
+    { "type": "Feature", "properties": { "name": "Lakadia 400kV SS",       "operator": "PGCIL", "voltage_kv": 400, "type": "Regional"  }, "geometry": { "type": "Point", "coordinates": [72.30, 22.50] } },
+    { "type": "Feature", "properties": { "name": "Mahuva 132kV SS",        "operator": "GETCO", "voltage_kv": 132, "type": "Distribution" }, "geometry": { "type": "Point", "coordinates": [71.75, 21.08] } },
+    { "type": "Feature", "properties": { "name": "Botad 132kV SS",         "operator": "GETCO", "voltage_kv": 132, "type": "Distribution" }, "geometry": { "type": "Point", "coordinates": [71.67, 22.17] } }
+  ]
+}

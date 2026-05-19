@@ -1,0 +1,51 @@
+{
+  "version": "1.0.0",
+  "generated": "2026-05-16",
+  "defaultContext": "local",
+  "note": "Sample / development data only. Replace with production datasets before deployment. See productionReplacement field for authoritative data sources.",
+  "layers": [
+    {
+      "id": "india-protected-areas-sample",
+      "name": "Protected Areas (Sample — 8 major sanctuaries)",
+      "category": "administrative",
+      "gisLayerKey": "protectedAreas",
+      "format": "geojson",
+      "path": "/layers/administrative/india-protected-areas-sample.geojson",
+      "description": "Simplified bounding-box polygons for 8 major Indian national parks and wildlife sanctuaries in wind-energy states. Not for legal or survey use.",
+      "featureCount": 8,
+      "bounds": [69.5, 12.8, 82.5, 30.5],
+      "attribution": "Sample data — simplified extents. Production: MoEFCC PA Network + WDPA",
+      "crs": "EPSG:4326",
+      "lastUpdated": "2026-05-16",
+      "productionReplacement": "https://www.protectedplanet.net/en/thematic-areas/wdpa — download WDPA shapefile for India"
+    },
+    {
+      "id": "india-wind-resource-sample",
+      "name": "Wind Resource Grid 100m (Sample — 10 zones)",
+      "category": "environment",
+      "gisLayerKey": "windResourceGrid",
+      "format": "geojson",
+      "path": "/layers/environment/wind-resource-india-sample.geojson",
+      "description": "Indicative 1°×1° wind resource grid cells over major Indian wind energy states with sample Weibull parameters. Values are illustrative — not from NIWE atlas.",
+      "featureCount": 10,
+      "bounds": [68.0, 8.5, 86.0, 30.5],
+      "attribution": "Sample data only. Production: NIWE Wind Atlas / Vortex / AWS Truepower",
+      "crs": "EPSG:4326",
+      "lastUpdated": "2026-05-16",
+      "productionReplacement": "https://niwe.res.in — NIWE Wind Atlas for India (100m hub height)"
+    },
+    {
+      "id": "default-exclusion-zones-template",
+      "name": "Default Exclusion Zone Templates",
+      "category": "administrative",
+      "gisLayerKey": "protectedAreas",
+      "format": "geojson",
+      "path": "/layers/templates/default-exclusion-zones.geojson",
+      "description": "Empty FeatureCollection with the full exclusion zone schema. Use as a starting template when drawing exclusion zones for a new project.",
+      "featureCount": 0,
+      "attribution": "Wind Farm Micrositing Tool — template",
+      "crs": "EPSG:4326",
+      "lastUpdated": "2026-05-16"
+    }
+  ]
+}
